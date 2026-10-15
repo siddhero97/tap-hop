@@ -1,61 +1,17 @@
 import { Request, Response } from 'express';
-import { prisma, PayoutStatus, MerchantType } from '@tabhop/database';
-import { getServices } from '../lib/app-services.js';
-import { logger } from '../lib/logger.js';
 import { GetSettlementsQuery } from './settlements.validator.js';
 import { getValidated } from '../middleware/validate.js';
+import { getServices } from '../lib/app-services.js';
+import { sendServiceError } from '../lib/service-error.js';
+import { logger } from '../lib/logger.js';
 
 /**
  * POST /settlements/:orderId/retry - Retry a failed settlement batch
  */
 export async function retrySettlement(req: Request, res: Response): Promise<void> {
   try {
-    const { orderId } = req.params;
-    const { settlementService: service } = getServices(req);
-
-    // Fetch order and batch
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
-      include: { payoutBatch: true },
-    });
-
-    if (!order) {
-      res.status(404).json({
-        status: 'error',
-        code: 'NOT_FOUND',
-        message: 'Order not found',
-      });
-      return;
-    }
-
-    if (!order.payoutBatch) {
-      res.status(404).json({
-        status: 'error',
-        code: 'NOT_FOUND',
-        message: 'No settlement batch found for this order',
-      });
-      return;
-    }
-
-    // Validate batch is in FAILED state
-    if (order.payoutBatch.status !== PayoutStatus.FAILED) {
-      res.status(409).json({
-        status: 'error',
-        code: 'SETTLEMENT_INVALID_TRANSITION',
-        message: `Cannot retry settlement batch in ${order.payoutBatch.status} state`,
-        currentStatus: order.payoutBatch.status,
-      });
-      return;
-    }
-
-    // Dispatch settlement retry
-    const result = await service.dispatch(orderId);
-
-    logger.info(
-      { orderId, payoutBatchId: result.payoutBatchId },
-      'Settlement retry dispatched'
-    );
-
+    const { settlementService } = getServices(req);
+    const result = await settlementService.retry(req.params.orderId);
     res.status(200).json({
       status: 'success',
       payoutBatch: {
@@ -64,6 +20,9 @@ export async function retrySettlement(req: Request, res: Response): Promise<void
       },
     });
   } catch (error) {
+    if (sendServiceError(res, error)) {
+      return;
+    }
     logger.error(
       { error: String(error), orderId: req.params.orderId },
       'Error retrying settlement'
@@ -84,91 +43,8 @@ export async function retrySettlement(req: Request, res: Response): Promise<void
 export async function getSettlements(req: Request, res: Response): Promise<void> {
   try {
     const query = getValidated<GetSettlementsQuery>(req);
-    const skip = (query.page - 1) * query.pageSize;
-
-    // Build where clause
-    const whereClause: any = {};
-
-    if (query.venueId) {
-      whereClause.order = {
-        venueId: query.venueId,
-      };
-    }
-
-    if (query.status) {
-      whereClause.status = query.status;
-    }
-
-    if (query.startDate || query.endDate) {
-      whereClause.createdAt = {};
-      if (query.startDate) {
-        whereClause.createdAt.gte = query.startDate;
-      }
-      if (query.endDate) {
-        whereClause.createdAt.lte = query.endDate;
-      }
-    }
-
-    // Fetch total count
-    const total = await prisma.payoutBatch.count({
-      where: whereClause,
-    });
-
-    // Fetch batches with items
-    const batches = await prisma.payoutBatch.findMany({
-      where: whereClause,
-      include: {
-        order: {
-          include: {
-            venue: true,
-            items: {
-              include: {
-                item: {
-                  include: {
-                    merchant: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-        items: {
-          include: {
-            merchant: true,
-            staff: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take: query.pageSize,
-    });
-
-    // Format response
-    const rows = batches.map((batch) => {
-      const partnerNames = new Set<string>();
-      batch.order.items.forEach((oi) => {
-        if (oi.item.merchant.merchantType === MerchantType.EXTERNAL_PARTNER) {
-          partnerNames.add(oi.item.merchant.businessName);
-        }
-      });
-
-      return {
-        orderId: batch.orderId,
-        venueName: batch.order.venue.businessName,
-        partnerNames: Array.from(partnerNames),
-        subtotalCents: Math.round(parseFloat(batch.order.subtotalAmount.toString()) * 100),
-        taxCents: Math.round(parseFloat(batch.order.taxAmount.toString()) * 100),
-        tipCents: Math.round(parseFloat(batch.order.tipAmount.toString()) * 100),
-        platformFeeCents: Math.round(parseFloat(batch.order.platformFeeAmount.toString()) * 100),
-        totalCents: Math.round(parseFloat(batch.order.totalAmount.toString()) * 100),
-        status: batch.status,
-        attempts: batch.attempts,
-        lastError: batch.lastError,
-        dispatchedAt: batch.dispatchedAt,
-        createdAt: batch.createdAt,
-      };
-    });
+    const { settlementService } = getServices(req);
+    const { rows, total } = await settlementService.listSettlements(query);
 
     res.status(200).json({
       status: 'success',
@@ -181,10 +57,7 @@ export async function getSettlements(req: Request, res: Response): Promise<void>
       },
     });
   } catch (error) {
-    logger.error(
-      { error: String(error) },
-      'Error retrieving settlements'
-    );
+    logger.error({ error: String(error) }, 'Error retrieving settlements');
     res.status(500).json({
       status: 'error',
       code: 'INTERNAL_ERROR',

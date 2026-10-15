@@ -1,7 +1,11 @@
 import { Request, Response } from 'express';
-import { prisma, OrderStatus } from '@tabhop/database';
-import { markOrderFailed, attemptSettlementDispatch } from './payments.service.js';
+import {
+  createPayPalOrderForOrder,
+  captureOrderAndSettle,
+  markOrderFailed,
+} from './payments.service.js';
 import { getServices } from '../lib/app-services.js';
+import { sendServiceError } from '../lib/service-error.js';
 import { logger } from '../lib/logger.js';
 
 /**
@@ -10,75 +14,17 @@ import { logger } from '../lib/logger.js';
  */
 export async function createPayPalOrder(req: Request, res: Response): Promise<void> {
   try {
-    const { id: orderId } = req.params;
-    const { gateway: paypalGateway } = getServices(req);
-
-    // Fetch order
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
-    });
-
-    if (!order) {
-      res.status(404).json({
-        status: 'error',
-        code: 'NOT_FOUND',
-        message: 'Order not found',
-      });
-      return;
-    }
-
-    // Validate order is in PENDING state
-    if (order.status !== OrderStatus.PENDING) {
-      res.status(409).json({
-        status: 'error',
-        code: 'ORDER_INVALID_TRANSITION',
-        message: `Cannot create PayPal order for order in ${order.status} state`,
-        currentStatus: order.status,
-      });
-      return;
-    }
-
-    // Check if PayPal order already created (idempotency)
-    if (order.paypalOrderId) {
-      res.status(200).json({
-        status: 'success',
-        paypalOrderId: order.paypalOrderId,
-        approveUrl: `https://sandbox.paypal.com/fake-approve?orderId=${order.paypalOrderId}`,
-      });
-      return;
-    }
-
-    // Create PayPal order
-    const paypalResult = await paypalGateway.createOrder({
-      referenceId: orderId,
-      amountCents: Math.round(parseFloat(order.totalAmount.toString()) * 100),
-      currency: order.currency,
-    });
-
-    // Store paypalOrderId in database
-    await prisma.order.update({
-      where: { id: orderId },
-      data: {
-        paypalOrderId: paypalResult.paypalOrderId,
-        status: OrderStatus.AUTHORIZED,
-      },
-    });
-
-    logger.info(
-      { orderId, paypalOrderId: paypalResult.paypalOrderId },
-      'PayPal order created'
+    const { gateway } = getServices(req);
+    const { created, paypalOrderId, approveUrl } = await createPayPalOrderForOrder(
+      gateway,
+      req.params.id
     );
-
-    res.status(201).json({
-      status: 'success',
-      paypalOrderId: paypalResult.paypalOrderId,
-      approveUrl: paypalResult.approveUrl,
-    });
+    res.status(created ? 201 : 200).json({ status: 'success', paypalOrderId, approveUrl });
   } catch (error) {
-    logger.error(
-      { error: String(error), orderId: req.params.id },
-      'Error creating PayPal order'
-    );
+    if (sendServiceError(res, error)) {
+      return;
+    }
+    logger.error({ error: String(error), orderId: req.params.id }, 'Error creating PayPal order');
     res.status(400).json({
       status: 'error',
       code: 'PAYMENT_GATEWAY_ERROR',
@@ -93,73 +39,15 @@ export async function createPayPalOrder(req: Request, res: Response): Promise<vo
  */
 export async function capturePayPalOrder(req: Request, res: Response): Promise<void> {
   try {
-    const { id: orderId } = req.params;
-    const { gateway: paypalGateway, settlementService: service } = getServices(req);
-
-    // Fetch order
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
-    });
-
-    if (!order) {
-      res.status(404).json({
-        status: 'error',
-        code: 'NOT_FOUND',
-        message: 'Order not found',
-      });
-      return;
-    }
-
-    // Validate order is in AUTHORIZED state
-    if (order.status !== OrderStatus.AUTHORIZED) {
-      res.status(409).json({
-        status: 'error',
-        code: 'ORDER_INVALID_TRANSITION',
-        message: `Cannot capture order in ${order.status} state. Must be AUTHORIZED.`,
-        currentStatus: order.status,
-      });
-      return;
-    }
-
-    if (!order.paypalOrderId) {
-      res.status(409).json({
-        status: 'error',
-        code: 'ORDER_INVALID_STATE',
-        message: 'Order does not have a PayPal order ID',
-      });
-      return;
-    }
-
-    // Capture PayPal order
-    const captureResult = await paypalGateway.captureOrder(order.paypalOrderId);
-
-    // Update order with capture details
-    const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
-      data: {
-        paypalCaptureId: captureResult.captureId,
-        status: OrderStatus.CAPTURED,
-        capturedAt: new Date(),
-      },
-    });
-
-    logger.info(
-      { orderId, paypalCaptureId: captureResult.captureId },
-      'PayPal order captured'
-    );
-
-    // Attempt settlement dispatch (may fail but capture succeeds)
-    const settlementResponse = await attemptSettlementDispatch(service, orderId, updatedOrder);
-    res.status(settlementResponse.status).json(settlementResponse.body);
+    const { gateway, settlementService } = getServices(req);
+    const body = await captureOrderAndSettle(gateway, settlementService, req.params.id);
+    res.status(200).json(body);
   } catch (error) {
-    // Capture or other failure - mark order as FAILED and return error
+    if (sendServiceError(res, error)) {
+      return;
+    }
     await markOrderFailed(req.params.id);
-
-    logger.error(
-      { error: String(error), orderId: req.params.id },
-      'Error capturing PayPal order'
-    );
-
+    logger.error({ error: String(error), orderId: req.params.id }, 'Error capturing PayPal order');
     res.status(400).json({
       status: 'error',
       code: 'PAYMENT_CAPTURE_FAILED',

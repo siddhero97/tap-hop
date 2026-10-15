@@ -3,12 +3,16 @@ import {
   Order,
   PayoutBatch,
   PayoutStatus,
+  MerchantType,
 } from '@tabhop/database';
 import { PayPalGateway, PayoutBatchRequest } from '../payments/payments.gateway.js';
 import { PayPalBatchStatus } from '../payments/payments.model.js';
 import { OrderStatus, type OrderWithItems, type SplitRow } from '../orders/orders.model.js';
 import { computeSplit } from './settlements.split.js';
 import { toCents, fromCents } from '../lib/money.js';
+import { logger } from '../lib/logger.js';
+import { ServiceError } from '../lib/service-error.js';
+import type { GetSettlementsQuery } from './settlements.validator.js';
 
 /**
  * Settlement dispatch service.
@@ -235,5 +239,108 @@ export class SettlementService {
       default:
         throw new Error(`Unknown PayPalBatchStatus: ${status}`);
     }
+  }
+
+  /**
+   * Retry settlement for an order whose payout batch FAILED.
+   * Throws ServiceError for missing order/batch or batch not in FAILED state.
+   */
+  async retry(orderId: string): Promise<{ payoutBatchId: string; status: string }> {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { payoutBatch: true },
+    });
+
+    if (!order) {
+      throw new ServiceError(404, 'NOT_FOUND', 'Order not found');
+    }
+
+    if (!order.payoutBatch) {
+      throw new ServiceError(404, 'NOT_FOUND', 'No settlement batch found for this order');
+    }
+
+    if (order.payoutBatch.status !== PayoutStatus.FAILED) {
+      throw new ServiceError(
+        409,
+        'SETTLEMENT_INVALID_TRANSITION',
+        `Cannot retry settlement batch in ${order.payoutBatch.status} state`,
+        { currentStatus: order.payoutBatch.status }
+      );
+    }
+
+    const result = await this.dispatch(orderId);
+    logger.info({ orderId, payoutBatchId: result.payoutBatchId }, 'Settlement retry dispatched');
+    return result;
+  }
+
+  /**
+   * Retrieve a page of the settlement ledger, filtered by venue, status, and date range.
+   */
+  async listSettlements(query: GetSettlementsQuery): Promise<{ rows: unknown[]; total: number }> {
+    const skip = (query.page - 1) * query.pageSize;
+    const whereClause: any = {};
+
+    if (query.venueId) {
+      whereClause.order = { venueId: query.venueId };
+    }
+
+    if (query.status) {
+      whereClause.status = query.status;
+    }
+
+    if (query.startDate || query.endDate) {
+      whereClause.createdAt = {};
+      if (query.startDate) {
+        whereClause.createdAt.gte = query.startDate;
+      }
+      if (query.endDate) {
+        whereClause.createdAt.lte = query.endDate;
+      }
+    }
+
+    const total = await prisma.payoutBatch.count({ where: whereClause });
+
+    const batches = await prisma.payoutBatch.findMany({
+      where: whereClause,
+      include: {
+        order: {
+          include: {
+            venue: true,
+            items: { include: { item: { include: { merchant: true } } } },
+          },
+        },
+        items: { include: { merchant: true, staff: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: query.pageSize,
+    });
+
+    const rows = batches.map((batch) => {
+      const partnerNames = new Set<string>();
+      batch.order.items.forEach((oi) => {
+        if (oi.item.merchant.merchantType === MerchantType.EXTERNAL_PARTNER) {
+          partnerNames.add(oi.item.merchant.businessName);
+        }
+      });
+
+      return {
+        orderId: batch.orderId,
+        venueName: batch.order.venue.businessName,
+        partnerNames: Array.from(partnerNames),
+        subtotalCents: Math.round(parseFloat(batch.order.subtotalAmount.toString()) * 100),
+        taxCents: Math.round(parseFloat(batch.order.taxAmount.toString()) * 100),
+        tipCents: Math.round(parseFloat(batch.order.tipAmount.toString()) * 100),
+        platformFeeCents: Math.round(parseFloat(batch.order.platformFeeAmount.toString()) * 100),
+        totalCents: Math.round(parseFloat(batch.order.totalAmount.toString()) * 100),
+        status: batch.status,
+        attempts: batch.attempts,
+        lastError: batch.lastError,
+        dispatchedAt: batch.dispatchedAt,
+        createdAt: batch.createdAt,
+      };
+    });
+
+    return { rows, total };
   }
 }

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { checkDatabaseHealth } from './health.service.js';
+import { getHealthReport } from './health.service.js';
 import { getServices } from '../lib/app-services.js';
 import { logger } from '../lib/logger.js';
 
@@ -10,34 +10,10 @@ import { logger } from '../lib/logger.js';
 export async function getHealth(req: Request, res: Response): Promise<void> {
   try {
     const { gateway, paypalMode } = getServices(req);
-    const result: any = {
-      status: 'ok',
-      db: await checkDatabaseHealth(),
-      paypal: 'unknown',
-    };
-
-    // Check PayPal connectivity (if not in fake mode)
-    if (paypalMode === 'fake') {
-      result.paypal = 'skipped';
-    } else if (gateway) {
-      result.paypal = 'ok';
-    } else {
-      result.paypal = 'unknown';
-    }
-
-    // Determine overall status
-    if (result.db === 'fail') {
-      result.status = 'fail';
-      res.status(503).json(result);
-      return;
-    }
-
-    res.status(200).json(result);
+    const report = await getHealthReport(gateway, paypalMode);
+    res.status(report.status === 'fail' ? 503 : 200).json(report);
   } catch (error) {
-    logger.error(
-      { error: String(error) },
-      'Error checking health'
-    );
+    logger.error({ error: String(error) }, 'Error checking health');
     res.status(500).json({
       status: 'fail',
       db: 'unknown',
