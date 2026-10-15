@@ -73,6 +73,14 @@ export async function createPayPalOrderForOrder(
     throw new ServiceError(404, 'NOT_FOUND', 'Order not found');
   }
 
+  if (order.paypalOrderId && order.status === OrderStatus.AUTHORIZED) {
+    return {
+      created: false,
+      paypalOrderId: order.paypalOrderId,
+      approveUrl: `https://sandbox.paypal.com/fake-approve?orderId=${order.paypalOrderId}`,
+    };
+  }
+
   if (order.status !== OrderStatus.PENDING) {
     throw new ServiceError(
       409,
@@ -80,14 +88,6 @@ export async function createPayPalOrderForOrder(
       `Cannot create PayPal order for order in ${order.status} state`,
       { currentStatus: order.status }
     );
-  }
-
-  if (order.paypalOrderId) {
-    return {
-      created: false,
-      paypalOrderId: order.paypalOrderId,
-      approveUrl: `https://sandbox.paypal.com/fake-approve?orderId=${order.paypalOrderId}`,
-    };
   }
 
   const paypalResult = await gateway.createOrder({

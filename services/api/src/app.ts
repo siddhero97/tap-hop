@@ -16,7 +16,13 @@ export function createApp(): Express.Application {
 
   // Middleware (in order)
   app.use(requestIdMiddleware);
-  app.use(Express.json());
+  app.use(
+    Express.json({
+      verify: (req, _res, buf) => {
+        (req as Express.Request & { rawBody?: string }).rawBody = buf.toString('utf8');
+      },
+    })
+  );
   app.use(authMiddleware);
 
   // Routes

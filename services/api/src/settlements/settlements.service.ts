@@ -111,14 +111,28 @@ export class SettlementService {
     let batch: PayoutBatch | undefined;
     try {
       batch = await prisma.$transaction(async (tx: any) => {
-        // Create PayoutBatch
-        const newBatch = await tx.payoutBatch.create({
-          data: {
-            orderId: order.id,
-            status: PayoutStatus.PROCESSING,
-            attempts: (order.payoutBatch?.attempts || 0) + 1,
-          },
-        });
+        // PayoutBatch.orderId is unique: a retry reuses the FAILED batch and replaces its items
+        const existingBatch = order.payoutBatch;
+        let newBatch;
+        if (existingBatch) {
+          await tx.payoutBatchItem.deleteMany({ where: { payoutBatchId: existingBatch.id } });
+          newBatch = await tx.payoutBatch.update({
+            where: { id: existingBatch.id },
+            data: {
+              status: PayoutStatus.PROCESSING,
+              attempts: existingBatch.attempts + 1,
+              lastError: null,
+            },
+          });
+        } else {
+          newBatch = await tx.payoutBatch.create({
+            data: {
+              orderId: order.id,
+              status: PayoutStatus.PROCESSING,
+              attempts: 1,
+            },
+          });
+        }
 
         // Create PayoutBatchItems
         const items = split.map((row, index) => ({
