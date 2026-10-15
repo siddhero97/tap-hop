@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MerchantType {
+  PRIMARY_VENUE
+  EXTERNAL_PARTNER
+}
+
+enum OrderStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+}
+
+enum PayoutStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum RecipientType {
+  PRIMARY_VENUE
+  PARTNER_MERCHANT
+  STAFF_TIP
+  PLATFORM_FEE
+}
+
+model Merchant {
+  id              String        @id @default(uuid())
+  businessName    String
+  merchantType    MerchantType
+  paypalEmail     String
+  commissionRate  Decimal       @default(0.15) @db.Decimal(5, 4)
+  items           Item[]
+  staff           Staff[]
+  ordersAsVenue   Order[]       @relation("OrderVenue")
+  payoutItems     PayoutBatchItem[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model Staff {
+  id          String   @id @default(uuid())
+  venueId     String
+  venue       Merchant @relation(fields: [venueId], references: [id])
+  displayName String
+  paypalEmail String
+  isActive    Boolean  @default(true)
+  orders      Order[]
+  payoutItems PayoutBatchItem[]
+  createdAt   DateTime @default(now())
+}
+
+model Item {
+  id          String    @id @default(uuid())
+  merchantId  String
+  merchant    Merchant  @relation(fields: [merchantId], references: [id])
+  name        String
+  description String
+  price       Decimal   @db.Decimal(10, 2)
+  category    String
+  isActive    Boolean   @default(true)
+  metadata    Json?
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id                String       @id @default(uuid())
+  idempotencyKey    String?      @unique
+  tableNumber       String?
+  venueId           String
+  venue             Merchant     @relation("OrderVenue", fields: [venueId], references: [id])
+  serverStaffId     String?
+  serverStaff       Staff?       @relation(fields: [serverStaffId], references: [id])
+  paypalOrderId     String?      @unique
+  paypalCaptureId   String?      @unique
+  subtotalAmount    Decimal      @db.Decimal(10, 2)
+  taxAmount         Decimal      @db.Decimal(10, 2)
+  tipAmount         Decimal      @db.Decimal(10, 2) @default(0)
+  platformFeeAmount Decimal      @db.Decimal(10, 2)
+  totalAmount       Decimal      @db.Decimal(10, 2)
+  currency          String       @default("USD")
+  status            OrderStatus  @default(PENDING)
+  items             OrderItem[]
+  payoutBatch       PayoutBatch?
+  capturedAt        DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+}
+
+model OrderItem {
+  id          String   @id @default(uuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  itemId      String
+  item        Item     @relation(fields: [itemId], references: [id])
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+}
+
+model PayoutBatch {
+  id               String            @id @default(uuid())
+  orderId          String            @unique
+  order            Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  paypalBatchId    String?           @unique
+  status           PayoutStatus      @default(QUEUED)
+  attempts         Int               @default(0)
+  lastError        String?
+  items            PayoutBatchItem[]
+  dispatchedAt     DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model PayoutBatchItem {
+  id              String        @id @default(uuid())
+  payoutBatchId   String
+  payoutBatch     PayoutBatch   @relation(fields: [payoutBatchId], references: [id], onDelete: Cascade)
+  merchantId      String?
+  merchant        Merchant?     @relation(fields: [merchantId], references: [id])
+  staffId         String?
+  staff           Staff?        @relation(fields: [staffId], references: [id])
+  recipientType   RecipientType
+  receiverEmail   String
+  amount          Decimal       @db.Decimal(10, 2)
+  currency        String        @default("USD")
+  senderItemId    String        @unique
+  status          PayoutStatus  @default(QUEUED)
+  createdAt       DateTime      @default(now())
+}
+
+model WebhookEvent {
+  id          String   @id @default(uuid())
+  provider    String   @default("paypal")
+  eventId     String   @unique
+  eventType   String
+  payload     Json
+  verified    Boolean
+  processedAt DateTime?
+  receivedAt  DateTime @default(now())
+}
