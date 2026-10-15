@@ -1,4 +1,4 @@
-import { prisma, Item } from '@tabhop/database';
+import { prisma, Item, MerchantType } from '@tabhop/database';
 
 export class CatalogService {
   /**
@@ -10,7 +10,7 @@ export class CatalogService {
         isActive: true,
         merchant: {
           id: venueId,
-          merchantType: 'PRIMARY_VENUE',
+          merchantType: MerchantType.PRIMARY_VENUE,
         },
       },
     });
@@ -26,7 +26,7 @@ export class CatalogService {
       where: {
         isActive: true,
         merchant: {
-          merchantType: 'EXTERNAL_PARTNER',
+          merchantType: MerchantType.EXTERNAL_PARTNER,
         },
       },
     });

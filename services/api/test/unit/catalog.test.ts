@@ -28,6 +28,10 @@ const createMockItem = (overrides: any = {}): any => ({
 vi.mock('@tabhop/database', () => {
   const findManyMock = vi.fn();
   return {
+    MerchantType: {
+      PRIMARY_VENUE: 'PRIMARY_VENUE',
+      EXTERNAL_PARTNER: 'EXTERNAL_PARTNER',
+    },
     prisma: {
       item: {
         findMany: findManyMock,
