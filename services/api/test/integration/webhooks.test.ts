@@ -3,6 +3,7 @@ import request from 'supertest';
 import { prisma } from '@tabhop/database';
 import { createApp } from '../../src/app.js';
 import { WebhookService } from '../../src/webhooks/webhooks.service.js';
+import * as webhooksService from '../../src/webhooks/webhooks.service.js';
 import { FakePayPalGateway } from '../../src/payments/payments.fake-gateway.js';
 import { SettlementService } from '../../src/settlements/settlements.service.js';
 import { Decimal } from '@prisma/client';
@@ -39,13 +40,6 @@ describe('Webhooks Routes', () => {
       },
     });
     testVenueId = venue.id;
-  });
-
-  afterEach(async () => {
-    // Clean up
-    await prisma.webhookEvent.deleteMany({});
-    await prisma.order.deleteMany({});
-    await prisma.merchant.deleteMany({});
   });
 
   describe('POST /webhooks/paypal', () => {
@@ -152,7 +146,8 @@ describe('Webhooks Routes', () => {
       const response = await request(app)
         .post('/webhooks/paypal')
         .send(payload)
-        .set('Content-Type', 'application/json');
+        .set('Content-Type', 'application/json')
+        .set('x-fake-signature', 'ok');
 
       expect(response.status).toBe(200);
 
@@ -178,7 +173,8 @@ describe('Webhooks Routes', () => {
       const response = await request(app)
         .post('/webhooks/paypal')
         .send(payload)
-        .set('Content-Type', 'application/json');
+        .set('Content-Type', 'application/json')
+        .set('x-fake-signature', 'ok');
 
       expect(response.status).toBe(200);
 
@@ -202,7 +198,8 @@ describe('Webhooks Routes', () => {
       const response = await request(app)
         .post('/webhooks/paypal')
         .send(payload)
-        .set('Content-Type', 'application/json');
+        .set('Content-Type', 'application/json')
+        .set('x-fake-signature', 'ok');
 
       expect(response.status).toBe(200);
 
@@ -275,6 +272,20 @@ describe('Webhooks Routes', () => {
 
       // Still returns 200
       expect(response.status).toBe(200);
+    });
+
+    it('should return 200 INTERNAL_ERROR when processWebhookEvent throws unexpectedly', async () => {
+      vi.spyOn(webhooksService, 'processWebhookEvent').mockRejectedValueOnce(
+        new Error('Fatal webhook error')
+      );
+
+      const response = await request(app)
+        .post('/webhooks/paypal')
+        .send({ id: 'WH-EVENT-009', event_type: 'PAYMENT.CAPTURE.COMPLETED' })
+        .set('Content-Type', 'application/json');
+
+      expect(response.status).toBe(200);
+      expect(response.body.code).toBe('INTERNAL_ERROR');
     });
   });
 });

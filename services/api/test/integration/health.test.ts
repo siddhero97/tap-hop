@@ -5,6 +5,10 @@ import { createApp } from '../../src/app.js';
 import { FakePayPalGateway } from '../../src/payments/payments.fake-gateway.js';
 import { SettlementService } from '../../src/settlements/settlements.service.js';
 import { WebhookService } from '../../src/webhooks/webhooks.service.js';
+import * as healthService from '../../src/health/health.service.js';
+import { HealthCheckSchema } from '../../src/health/health.validator.js';
+import { registerServices } from '../../src/lib/app-services.js';
+import { errorHandlerMiddleware } from '../../src/middleware/error-handler.js';
 
 // Create Express app for testing
 function createTestApp(paypalMode = 'sandbox') {
@@ -14,10 +18,12 @@ function createTestApp(paypalMode = 'sandbox') {
   const settlementService = new SettlementService(gateway);
   const webhookService = new WebhookService();
 
-  app.locals.gateway = gateway;
-  app.locals.settlementService = settlementService;
-  app.locals.webhookService = webhookService;
-  app.locals.paypalMode = paypalMode;
+  registerServices(app, {
+    gateway,
+    settlementService,
+    webhookService,
+    paypalMode,
+  });
 
   return app;
 }
@@ -106,6 +112,56 @@ describe('Health Route', () => {
 
       const validStatuses = ['ok', 'fail', 'skipped', 'unknown'];
       expect(validStatuses).toContain(response.body.paypal);
+    });
+
+    it('should return 500 when getHealthReport throws unexpectedly', async () => {
+      const app = createTestApp('sandbox');
+      vi.spyOn(healthService, 'getHealthReport').mockRejectedValueOnce(
+        new Error('Unexpected failure')
+      );
+
+      const response = await request(app).get('/health');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({
+        status: 'fail',
+        db: 'unknown',
+        paypal: 'unknown',
+      });
+    });
+
+    it('validates empty object with HealthCheckSchema', () => {
+      expect(HealthCheckSchema.parse({})).toEqual({});
+    });
+
+    it('throws when registerServices receives a missing service', () => {
+      const app = createApp();
+      expect(() =>
+        registerServices(app, {
+          gateway: undefined as any,
+          settlementService: {} as any,
+          webhookService: {} as any,
+          paypalMode: 'fake',
+        })
+      ).toThrow('Required app service not configured: gateway');
+    });
+
+    it('handles unhandled errors via errorHandlerMiddleware', () => {
+      const req: any = { requestId: 'req-123', path: '/boom', method: 'GET' };
+      const json = vi.fn();
+      const status = vi.fn().mockReturnValue({ json });
+      const res: any = { status };
+      const next = vi.fn();
+
+      errorHandlerMiddleware(new Error('Unhandled boom'), req, res, next);
+
+      expect(status).toHaveBeenCalledWith(500);
+      expect(json).toHaveBeenCalledWith({
+        status: 'error',
+        code: 'INTERNAL_ERROR',
+        message: 'An unexpected error occurred',
+        requestId: 'req-123',
+      });
     });
   });
 });

@@ -455,6 +455,35 @@ describe('PayPalRestGateway (mocked)', () => {
         })
       ).rejects.toThrow('PayPal createPayoutBatch failed: Forbidden');
     });
+
+    it('defaults status to PENDING when batch_status is empty', async () => {
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: 'fake-token', expires_in: 3600 }),
+      });
+
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          batch_header: {
+            payout_batch_id: 'batch-790',
+            batch_status: '',
+          },
+        }),
+      });
+
+      const result = await gateway.createPayoutBatch({
+        sender_batch_header: {
+          sender_batch_id: 'batch-124',
+          email_subject: 'Test Payout',
+          email_message: 'Here is your payout',
+        },
+        items: [],
+      });
+
+      expect(result.paypalBatchId).toBe('batch-790');
+      expect(result.status).toBe(PayPalBatchStatus.PENDING);
+    });
   });
 
   describe('verifyWebhook', () => {

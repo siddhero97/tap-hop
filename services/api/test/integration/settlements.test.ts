@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
 import { prisma, PayoutStatus } from '@tabhop/database';
 import { createApp } from '../../src/app.js';
@@ -86,6 +86,50 @@ describe('Settlements Routes', () => {
       expect(response.body.payoutBatch).toBeDefined();
     });
 
+    it('should return 400 when settlement retry dispatch fails', async () => {
+      const order = await prisma.order.create({
+        data: {
+          venueId: testVenueId,
+          subtotalAmount: new Decimal('100.00'),
+          taxAmount: new Decimal('8.00'),
+          platformFeeAmount: new Decimal('5.00'),
+          totalAmount: new Decimal('113.00'),
+          status: 'CAPTURED',
+        },
+      });
+
+      const item = await prisma.item.create({
+        data: {
+          merchantId: testVenueId,
+          name: 'Retry Fail Item',
+          description: 'Retry fail item',
+          price: new Decimal('100.00'),
+          category: 'Food',
+          isActive: true,
+        },
+      });
+      await prisma.orderItem.create({
+        data: { orderId: order.id, itemId: item.id, quantity: 1, unitPrice: new Decimal('100.00') },
+      });
+
+      await prisma.payoutBatch.create({
+        data: {
+          orderId: order.id,
+          status: PayoutStatus.FAILED,
+          lastError: 'Previous error',
+        },
+      });
+
+      app.locals.gateway.failNext('createPayoutBatch');
+
+      const response = await request(app)
+        .post(`/settlements/${order.id}/retry`)
+        .send({});
+
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe('SETTLEMENT_DISPATCH_FAILED');
+    });
+
     it('should return 400 for invalid order ID format', async () => {
       const response = await request(app)
         .post('/settlements/invalid-id/retry')
@@ -154,6 +198,24 @@ describe('Settlements Routes', () => {
 
   describe('GET /settlements', () => {
     beforeEach(async () => {
+      const partner = await prisma.merchant.create({
+        data: {
+          businessName: 'Partner Food Truck',
+          merchantType: 'EXTERNAL_PARTNER',
+          paypalEmail: 'partner@example.com',
+        },
+      });
+      const partnerItem = await prisma.item.create({
+        data: {
+          merchantId: partner.id,
+          name: 'Partner Taco',
+          description: 'Taco',
+          price: new Decimal('10.00'),
+          category: 'Food',
+          isActive: true,
+        },
+      });
+
       // Create test orders and batches
       for (let i = 0; i < 15; i++) {
         const order = await prisma.order.create({
@@ -166,6 +228,17 @@ describe('Settlements Routes', () => {
             status: 'CAPTURED',
           },
         });
+
+        if (i === 14) {
+          await prisma.orderItem.create({
+            data: {
+              orderId: order.id,
+              itemId: partnerItem.id,
+              quantity: 1,
+              unitPrice: new Decimal('10.00'),
+            },
+          });
+        }
 
         await prisma.payoutBatch.create({
           data: {
@@ -250,10 +323,11 @@ describe('Settlements Routes', () => {
 
     it('should filter by date range', async () => {
       const now = new Date();
+      const past = new Date(now.getTime() - 60 * 60 * 1000);
       const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
       const response = await request(app).get(
-        `/settlements?startDate=${now.toISOString()}&endDate=${tomorrow.toISOString()}`
+        `/settlements?startDate=${past.toISOString()}&endDate=${tomorrow.toISOString()}`
       );
 
       expect(response.status).toBe(200);
@@ -277,7 +351,7 @@ describe('Settlements Routes', () => {
       const row = response.body.data[0];
       expect(row.orderId).toBeDefined();
       expect(row.venueName).toBe('Test Venue');
-      expect(row.partnerNames).toBeDefined();
+      expect(row.partnerNames).toContain('Partner Food Truck');
       expect(row.subtotalCents).toBeDefined();
       expect(row.taxCents).toBeDefined();
       expect(row.tipCents).toBeDefined();
@@ -286,6 +360,17 @@ describe('Settlements Routes', () => {
       expect(row.status).toBeDefined();
       expect(row.attempts).toBeDefined();
       expect(row.createdAt).toBeDefined();
+    });
+
+    it('should return 500 when listing settlements fails unexpectedly', async () => {
+      vi.spyOn(app.locals.settlementService, 'listSettlements').mockRejectedValueOnce(
+        new Error('Database error')
+      );
+
+      const response = await request(app).get('/settlements');
+
+      expect(response.status).toBe(500);
+      expect(response.body.code).toBe('INTERNAL_ERROR');
     });
   });
 });

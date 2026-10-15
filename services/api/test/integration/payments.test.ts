@@ -8,6 +8,7 @@ import { FakePayPalGateway } from '../../src/payments/payments.fake-gateway.js';
 import { WebhookService } from '../../src/webhooks/webhooks.service.js';
 import { Decimal } from '@prisma/client';
 import { PayPalBatchStatus } from '../../src/payments/payments.model.js';
+import { markOrderFailed } from '../../src/payments/payments.service.js';
 
 // Create Express app for testing
 function createTestApp() {
@@ -58,13 +59,6 @@ describe('Payments Routes', () => {
       },
     });
     testOrderId = order.id;
-  });
-
-  afterEach(async () => {
-    // Clean up
-    await prisma.payoutBatch.deleteMany({});
-    await prisma.order.deleteMany({});
-    await prisma.merchant.deleteMany({});
   });
 
   describe('POST /orders/:id/paypal', () => {
@@ -135,7 +129,18 @@ describe('Payments Routes', () => {
     let authorizedOrderId: string;
 
     beforeEach(async () => {
-      // Create and authorize an order
+      const item = await prisma.item.create({
+        data: {
+          merchantId: testVenueId,
+          name: 'Test Item',
+          description: 'Test Item',
+          price: new Decimal('100.00'),
+          category: 'Food',
+          isActive: true,
+        },
+      });
+
+      // Create and authorize an order with a matching OrderItem
       const authorizedOrder = await prisma.order.create({
         data: {
           venueId: testVenueId,
@@ -148,6 +153,15 @@ describe('Payments Routes', () => {
         },
       });
       authorizedOrderId = authorizedOrder.id;
+
+      await prisma.orderItem.create({
+        data: {
+          orderId: authorizedOrderId,
+          itemId: item.id,
+          quantity: 1,
+          unitPrice: new Decimal('100.00'),
+        },
+      });
     });
 
     it('should capture order and dispatch settlement', async () => {
@@ -239,9 +253,15 @@ describe('Payments Routes', () => {
       expect(order?.status).toBe(OrderStatus.FAILED);
     });
 
+    it('should handle markOrderFailed error gracefully when order does not exist in DB', async () => {
+      await expect(
+        markOrderFailed('00000000-0000-0000-0000-000000000000')
+      ).resolves.toBeUndefined();
+    });
+
     it('should return success even if settlement dispatch fails', async () => {
-      // This would require settlement service to fail, which we can't easily test here
-      // but the code path is there to handle it
+      gateway.failNext('createPayoutBatch');
+
       const response = await request(app)
         .post(`/orders/${authorizedOrderId}/capture`)
         .send({});

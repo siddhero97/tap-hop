@@ -487,6 +487,104 @@ describe('WebhookService', () => {
 
         expect(mockPrisma.payoutBatch.update).not.toHaveBeenCalled();
       });
+
+      it('handles missing paypalOrderId in PAYMENT.CAPTURE.COMPLETED gracefully', async () => {
+        const headers = { 'x-signature': 'valid' };
+        const payload: WebhookPayload = {
+          id: 'evt-missing-order-id',
+          event_type: 'PAYMENT.CAPTURE.COMPLETED',
+          resource: {},
+        };
+        const rawBody = JSON.stringify(payload);
+
+        mockGateway.verifyWebhook.mockResolvedValue(true);
+        mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
+        mockPrisma.webhookEvent.create.mockResolvedValue({ id: 'webhook-12' });
+        mockPrisma.webhookEvent.update.mockResolvedValue({ id: 'webhook-12' });
+
+        await service.processPayPalEvent(headers, rawBody, mockGateway);
+
+        expect(mockPrisma.order.findUnique).not.toHaveBeenCalled();
+      });
+
+      it('rethrows when handleCaptureCompleted encounters a database error', async () => {
+        const headers = { 'x-signature': 'valid' };
+        const payload: WebhookPayload = {
+          id: 'evt-capture-db-err',
+          event_type: 'PAYMENT.CAPTURE.COMPLETED',
+          resource: {
+            supplementary_data: {
+              related_ids: {
+                order_id: 'paypal-order-err',
+              },
+            },
+          },
+        };
+        const rawBody = JSON.stringify(payload);
+
+        mockGateway.verifyWebhook.mockResolvedValue(true);
+        mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
+        mockPrisma.webhookEvent.create.mockResolvedValue({ id: 'webhook-13' });
+        mockPrisma.order.findUnique.mockRejectedValue(new Error('DB failure'));
+
+        await expect(
+          service.processPayPalEvent(headers, rawBody, mockGateway)
+        ).rejects.toThrow('DB failure');
+      });
+
+      it('handles missing paypalBatchId in PAYMENT.PAYOUTSBATCH.SUCCESS gracefully', async () => {
+        const headers = { 'x-signature': 'valid' };
+        const payload: WebhookPayload = {
+          id: 'evt-missing-batch-id',
+          event_type: 'PAYMENT.PAYOUTSBATCH.SUCCESS',
+          resource: {},
+        };
+        const rawBody = JSON.stringify(payload);
+
+        mockGateway.verifyWebhook.mockResolvedValue(true);
+        mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
+        mockPrisma.webhookEvent.create.mockResolvedValue({ id: 'webhook-14' });
+        mockPrisma.webhookEvent.update.mockResolvedValue({ id: 'webhook-14' });
+
+        await service.processPayPalEvent(headers, rawBody, mockGateway);
+
+        expect(mockPrisma.payoutBatch.findUnique).not.toHaveBeenCalled();
+      });
+
+      it('rethrows when handlePayoutBatchStatusChanged encounters a database error', async () => {
+        const headers = { 'x-signature': 'valid' };
+        const payload: WebhookPayload = {
+          id: 'evt-payout-db-err',
+          event_type: 'PAYMENT.PAYOUTSBATCH.SUCCESS',
+          resource: {
+            id: 'paypal-batch-err',
+          },
+        };
+        const rawBody = JSON.stringify(payload);
+
+        mockGateway.verifyWebhook.mockResolvedValue(true);
+        mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
+        mockPrisma.webhookEvent.create.mockResolvedValue({ id: 'webhook-15' });
+        mockPrisma.payoutBatch.findUnique.mockRejectedValue(new Error('Payout DB failure'));
+
+        await expect(
+          service.processPayPalEvent(headers, rawBody, mockGateway)
+        ).rejects.toThrow('Payout DB failure');
+      });
+
+      it('covers internal status mapper and unknown payout eventType branches', async () => {
+        const s = service as any;
+        expect(() => s.mapPayPalBatchStatusToPayoutStatus('INVALID')).toThrow(
+          'Unknown payout batch status: INVALID'
+        );
+
+        await s.handlePayoutBatchStatusChanged('UNKNOWN', {
+          id: 'evt-unknown-payout',
+          event_type: 'UNKNOWN',
+          resource: { id: 'batch-1' },
+        });
+        expect(mockPrisma.payoutBatch.findUnique).not.toHaveBeenCalled();
+      });
     });
   });
 });

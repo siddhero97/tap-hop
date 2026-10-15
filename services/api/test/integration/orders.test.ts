@@ -6,6 +6,7 @@ import { FakePayPalGateway } from '../../src/payments/payments.fake-gateway.js';
 import { SettlementService } from '../../src/settlements/settlements.service.js';
 import { WebhookService } from '../../src/webhooks/webhooks.service.js';
 import { Decimal } from '@prisma/client';
+import * as ordersService from '../../src/orders/orders.service.js';
 
 // Create Express app for testing
 function createTestApp() {
@@ -62,15 +63,6 @@ describe('Orders Routes', () => {
       },
     });
     testStaffId = staff.id;
-  });
-
-  afterEach(async () => {
-    // Clean up test data
-    await prisma.order.deleteMany({});
-    await prisma.orderItem.deleteMany({});
-    await prisma.staff.deleteMany({});
-    await prisma.item.deleteMany({});
-    await prisma.merchant.deleteMany({});
   });
 
   describe('POST /orders', () => {
@@ -191,6 +183,47 @@ describe('Orders Routes', () => {
       expect(response.body.order.platformFeeCents).toBe(299);
       expect(response.body.order.totalCents).toBe(5997 + 479 + 299);
     });
+
+    it('should return 404 when item UUID does not exist', async () => {
+      const payload = {
+        venueId: testVenueId,
+        lines: [{ itemId: '00000000-0000-0000-0000-000000000000', quantity: 1 }],
+      };
+
+      const response = await request(app).post('/orders').send(payload);
+
+      expect(response.status).toBe(404);
+      expect(response.body.code).toBe('NOT_FOUND');
+    });
+
+    it('should return 404 when serverStaffId does not exist or belongs to another venue', async () => {
+      const payload = {
+        venueId: testVenueId,
+        serverStaffId: '00000000-0000-0000-0000-000000000000',
+        lines: [{ itemId: testItemId, quantity: 1 }],
+      };
+
+      const response = await request(app).post('/orders').send(payload);
+
+      expect(response.status).toBe(404);
+      expect(response.body.code).toBe('NOT_FOUND');
+    });
+
+    it('should return 500 on unexpected error in POST /orders', async () => {
+      vi.spyOn(ordersService, 'createOrderWithItems').mockRejectedValueOnce(
+        new Error('Unexpected DB error')
+      );
+
+      const payload = {
+        venueId: testVenueId,
+        lines: [{ itemId: testItemId, quantity: 1 }],
+      };
+
+      const response = await request(app).post('/orders').send(payload);
+
+      expect(response.status).toBe(500);
+      expect(response.body.code).toBe('INTERNAL_ERROR');
+    });
   });
 
   describe('GET /orders/:id', () => {
@@ -283,6 +316,17 @@ describe('Orders Routes', () => {
       expect(response.status).toBe(200);
       expect(response.body.order.payoutBatch).toBeDefined();
       expect(response.body.order.payoutBatch.id).toBe(batch.id);
+    });
+
+    it('should return 500 on unexpected error in GET /orders/:id', async () => {
+      vi.spyOn(ordersService, 'getOrderDetails').mockRejectedValueOnce(
+        new Error('Unexpected DB error')
+      );
+
+      const response = await request(app).get('/orders/00000000-0000-0000-0000-000000000000');
+
+      expect(response.status).toBe(500);
+      expect(response.body.code).toBe('INTERNAL_ERROR');
     });
   });
 });

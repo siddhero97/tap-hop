@@ -325,6 +325,38 @@ describe('settlement split', () => {
       expect(result[0].receiverEmail).toBe('venue@example.com');
     });
 
+    it('uses default email for missing partner and staff vendors', () => {
+      const order: OrderWithItems = {
+        id: 'order-7b',
+        venueId: 'venue-1',
+        serverStaffId: 'staff-missing',
+        subtotalCents: 1000,
+        taxCents: 80,
+        tipCents: 200,
+        platformFeeCents: 50,
+        totalCents: 1330,
+        items: [
+          {
+            merchantId: 'partner-missing',
+            merchantType: 'EXTERNAL_PARTNER',
+            commissionRate: 0.1,
+            lineCents: 1000,
+          },
+        ],
+      };
+
+      const vendorEmails = new Map<string, string>();
+      const result = computeSplit(order, vendorEmails);
+
+      const partnerRow = result.find(r => r.merchantId === 'partner-missing');
+      const staffRow = result.find(r => r.staffId === 'staff-missing');
+      const venueRow = result.find(r => r.merchantId === 'venue-1');
+
+      expect(partnerRow?.receiverEmail).toBe('unknown@example.com');
+      expect(staffRow?.receiverEmail).toBe('staff@example.com');
+      expect(venueRow?.receiverEmail).toBe('venue@example.com');
+    });
+
     it('accumulates splits for same recipient', () => {
       const order: OrderWithItems = {
         id: 'order-8',

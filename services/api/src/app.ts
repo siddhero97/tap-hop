@@ -3,6 +3,7 @@ import { requestIdMiddleware } from './middleware/request-id.js';
 import { authMiddleware } from './middleware/auth.js';
 import { errorHandlerMiddleware } from './middleware/error-handler.js';
 import { healthRouter } from './health/health.routes.js';
+import { catalogRouter } from './catalog/catalog.routes.js';
 import { ordersRouter } from './orders/orders.routes.js';
 import { paymentsRouter } from './payments/payments.routes.js';
 import { settlementsRouter } from './settlements/settlements.routes.js';
@@ -27,6 +28,7 @@ export function createApp(): Express.Application {
 
   // Routes
   app.use('/health', healthRouter);
+  app.use('/catalog', catalogRouter);
   app.use('/orders', ordersRouter);
   app.use('/orders', paymentsRouter);
   app.use('/settlements', settlementsRouter);

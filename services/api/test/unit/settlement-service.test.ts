@@ -506,4 +506,96 @@ describe('SettlementService', () => {
       expect(vi.mocked(prisma.$transaction)).toHaveBeenCalled();
     });
   });
+
+  describe('Status mapping branches', () => {
+    it('maps existing QUEUED and COMPLETED payout batches on idempotent dispatch', async () => {
+      const baseOrder = {
+        id: 'order-status-map',
+        venueId: 'venue-1',
+        serverStaffId: null,
+        status: OrderStatus.CAPTURED,
+        subtotalAmount: mockDecimal('50.00'),
+        taxAmount: mockDecimal('4.00'),
+        tipAmount: mockDecimal('0.00'),
+        platformFeeAmount: mockDecimal('1.50'),
+        totalAmount: mockDecimal('55.50'),
+        venue: { paypalEmail: 'venue@example.com' },
+        serverStaff: null,
+        items: [],
+      };
+
+      vi.mocked(prisma.order.findUnique).mockResolvedValueOnce({
+        ...baseOrder,
+        payoutBatch: { id: 'b-queued', status: 'QUEUED', attempts: 1 },
+      } as any);
+      const resQueued = await service.dispatch('order-status-map');
+      expect(resQueued.status).toBe(PayPalBatchStatus.PENDING);
+
+      vi.mocked(prisma.order.findUnique).mockResolvedValueOnce({
+        ...baseOrder,
+        payoutBatch: { id: 'b-completed', status: 'COMPLETED', attempts: 1 },
+      } as any);
+      const resCompleted = await service.dispatch('order-status-map');
+      expect(resCompleted.status).toBe(PayPalBatchStatus.SUCCESS);
+    });
+
+    it('maps PayPalBatchStatus values and throws on unknown statuses', () => {
+      const s = service as any;
+      expect(s.mapPayoutStatusToPayPalBatchStatus('FAILED')).toBe(PayPalBatchStatus.FAILED);
+      expect(() => s.mapPayoutStatusToPayPalBatchStatus('UNKNOWN')).toThrow(
+        'Unknown PayoutStatus: UNKNOWN'
+      );
+
+      expect(s.mapPayPalBatchStatusToPayoutStatus(PayPalBatchStatus.PENDING)).toBe('QUEUED');
+      expect(s.mapPayPalBatchStatusToPayoutStatus(PayPalBatchStatus.PROCESSING)).toBe('PROCESSING');
+      expect(s.mapPayPalBatchStatusToPayoutStatus(PayPalBatchStatus.SUCCESS)).toBe('COMPLETED');
+      expect(s.mapPayPalBatchStatusToPayoutStatus(PayPalBatchStatus.FAILED)).toBe('FAILED');
+      expect(s.mapPayPalBatchStatusToPayoutStatus(PayPalBatchStatus.DENIED)).toBe('FAILED');
+      expect(() => s.mapPayPalBatchStatusToPayoutStatus('UNKNOWN')).toThrow(
+        'Unknown PayPalBatchStatus: UNKNOWN'
+      );
+    });
+
+    it('handles $transaction errors with and without constraint/transaction keywords', async () => {
+      const baseOrder = {
+        id: 'order-tx-err',
+        venueId: 'venue-1',
+        serverStaffId: null,
+        status: OrderStatus.CAPTURED,
+        subtotalAmount: mockDecimal('50.00'),
+        taxAmount: mockDecimal('4.00'),
+        tipAmount: mockDecimal('0.00'),
+        platformFeeAmount: mockDecimal('1.50'),
+        totalAmount: mockDecimal('55.50'),
+        venue: { paypalEmail: 'venue@example.com' },
+        serverStaff: null,
+        items: [
+          {
+            quantity: 1,
+            unitPrice: mockDecimal('50.00'),
+            item: {
+              merchantId: 'venue-1',
+              merchant: {
+                id: 'venue-1',
+                merchantType: 'PRIMARY_VENUE',
+                commissionRate: mockDecimal('0.15'),
+                paypalEmail: 'venue@example.com',
+              },
+            },
+          },
+        ],
+        payoutBatch: null,
+      };
+
+      vi.mocked(prisma.order.findUnique).mockResolvedValueOnce(baseOrder as any);
+      vi.mocked(prisma.$transaction).mockRejectedValueOnce(new Error('transaction aborted'));
+      await expect(service.dispatch('order-tx-err')).rejects.toThrow(
+        'Failed to create payout batch: transaction aborted'
+      );
+
+      vi.mocked(prisma.order.findUnique).mockResolvedValueOnce(baseOrder as any);
+      vi.mocked(prisma.$transaction).mockRejectedValueOnce(new Error('connection lost'));
+      await expect(service.dispatch('order-tx-err')).rejects.toThrow('connection lost');
+    });
+  });
 });
