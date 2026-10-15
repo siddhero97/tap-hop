@@ -1,4 +1,5 @@
 import { PayPalGateway, PayoutBatchRequest } from './gateway.js';
+import { PayPalCaptureStatus, PayPalBatchStatus } from './constants.js';
 import { logger } from '../../lib/logger.js';
 
 /**
@@ -91,7 +92,7 @@ export class PayPalRestGateway implements PayPalGateway {
 
   async captureOrder(paypalOrderId: string): Promise<{
     captureId: string;
-    status: 'COMPLETED' | 'PENDING' | 'DECLINED';
+    status: PayPalCaptureStatus;
     amountCents: number;
   }> {
     const token = await this.getToken();
@@ -119,14 +120,14 @@ export class PayPalRestGateway implements PayPalGateway {
     const capture = data.purchase_units[0]?.payments?.captures?.[0];
     return {
       captureId: capture?.id || '',
-      status: (capture?.status as 'COMPLETED' | 'PENDING' | 'DECLINED') || 'PENDING',
+      status: (capture?.status as PayPalCaptureStatus) || PayPalCaptureStatus.PENDING,
       amountCents: Math.round(parseFloat(capture?.amount?.value || '0') * 100),
     };
   }
 
   async createPayoutBatch(req: PayoutBatchRequest): Promise<{
     paypalBatchId: string;
-    status: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'DENIED';
+    status: PayPalBatchStatus;
   }> {
     const token = await this.getToken();
     const response = await fetch(`${this.baseUrl}/v1/payments/payouts`, {
@@ -147,7 +148,7 @@ export class PayPalRestGateway implements PayPalGateway {
     const data = (await response.json()) as { batch_header: { payout_batch_id: string; batch_status: string } };
     return {
       paypalBatchId: data.batch_header.payout_batch_id,
-      status: (data.batch_header.batch_status as any) || 'PENDING',
+      status: (data.batch_header.batch_status as PayPalBatchStatus) || PayPalBatchStatus.PENDING,
     };
   }
 

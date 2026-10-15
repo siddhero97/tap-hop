@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { PayPalRestGateway } from '../../src/modules/payments/rest-gateway';
+import { PayPalCaptureStatus, PayPalBatchStatus } from '../../src/modules/payments/constants';
 
 describe('PayPalRestGateway (mocked)', () => {
   let gateway: PayPalRestGateway;
@@ -231,7 +232,7 @@ describe('PayPalRestGateway (mocked)', () => {
       const result = await gateway.captureOrder('order-123');
 
       expect(result.captureId).toBe('capture-456');
-      expect(result.status).toBe('COMPLETED');
+      expect(result.status).toBe(PayPalCaptureStatus.COMPLETED);
       expect(result.amountCents).toBe(1000);
     });
 
@@ -323,7 +324,7 @@ describe('PayPalRestGateway (mocked)', () => {
 
       const result = await gateway.captureOrder('order-123');
 
-      expect(result.status).toBe('PENDING');
+      expect(result.status).toBe(PayPalCaptureStatus.PENDING);
     });
 
     it('handles PayPal API error', async () => {
@@ -359,7 +360,7 @@ describe('PayPalRestGateway (mocked)', () => {
       const result = await gateway.captureOrder('order-123');
 
       expect(result.captureId).toBe('');
-      expect(result.status).toBe('PENDING');
+      expect(result.status).toBe(PayPalCaptureStatus.PENDING);
       expect(result.amountCents).toBe(0);
     });
   });
@@ -399,7 +400,7 @@ describe('PayPalRestGateway (mocked)', () => {
       });
 
       expect(result.paypalBatchId).toBe('batch-789');
-      expect(result.status).toBe('PROCESSING');
+      expect(result.status).toBe(PayPalBatchStatus.PROCESSING);
     });
 
     it('uses sender_batch_id as request ID', async () => {
@@ -601,6 +602,7 @@ describe('PayPalRestGateway (mocked)', () => {
       const captureResult = await gateway.captureOrder(orderResult.paypalOrderId);
 
       expect(captureResult.captureId).toBe('capture-456');
+      expect(captureResult.status).toBe(PayPalCaptureStatus.COMPLETED);
       // Only 3 calls total: 1 token + 1 order + 1 capture
       expect(fetchMock).toHaveBeenCalledTimes(3);
     });

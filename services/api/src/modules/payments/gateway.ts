@@ -1,3 +1,5 @@
+import { PayPalCaptureStatus, PayPalBatchStatus } from './constants.js';
+
 /**
  * PayPal gateway interface for order creation, capture, and payouts.
  * Two implementations: REST for sandbox/production, Fake for testing.
@@ -19,7 +21,7 @@ export interface PayPalGateway {
    */
   captureOrder(paypalOrderId: string): Promise<{
     captureId: string;
-    status: 'COMPLETED' | 'PENDING' | 'DECLINED';
+    status: PayPalCaptureStatus;
     amountCents: number;
   }>;
 
@@ -29,7 +31,7 @@ export interface PayPalGateway {
    */
   createPayoutBatch(req: PayoutBatchRequest): Promise<{
     paypalBatchId: string;
-    status: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'DENIED';
+    status: PayPalBatchStatus;
   }>;
 
   /**

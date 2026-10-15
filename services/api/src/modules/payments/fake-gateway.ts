@@ -1,4 +1,5 @@
 import { PayPalGateway, PayoutBatchRequest } from './gateway.js';
+import { PayPalCaptureStatus, PayPalBatchStatus } from './constants.js';
 
 /**
  * In-memory PayPal gateway for testing.
@@ -37,7 +38,7 @@ export class FakePayPalGateway implements PayPalGateway {
 
   async captureOrder(paypalOrderId: string): Promise<{
     captureId: string;
-    status: 'COMPLETED' | 'PENDING' | 'DECLINED';
+    status: PayPalCaptureStatus;
     amountCents: number;
   }> {
     this.callLog.push({ method: 'captureOrder', args: { paypalOrderId } });
@@ -47,14 +48,14 @@ export class FakePayPalGateway implements PayPalGateway {
     }
     return {
       captureId: `FAKE-CAPTURE-${++this.captureCounter}`,
-      status: 'COMPLETED',
+      status: PayPalCaptureStatus.COMPLETED,
       amountCents: 1000,
     };
   }
 
   async createPayoutBatch(req: PayoutBatchRequest): Promise<{
     paypalBatchId: string;
-    status: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'DENIED';
+    status: PayPalBatchStatus;
   }> {
     this.callLog.push({ method: 'createPayoutBatch', args: req });
     if (this.failureMode === 'createPayoutBatch') {
@@ -63,7 +64,7 @@ export class FakePayPalGateway implements PayPalGateway {
     }
     return {
       paypalBatchId: `FAKE-BATCH-${++this.batchCounter}`,
-      status: 'PROCESSING',
+      status: PayPalBatchStatus.PROCESSING,
     };
   }
 

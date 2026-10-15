@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { FakePayPalGateway } from '../../src/modules/payments/fake-gateway';
+import { PayPalCaptureStatus, PayPalBatchStatus } from '../../src/modules/payments/constants';
 
 describe('FakePayPalGateway', () => {
   let gateway: FakePayPalGateway;
@@ -35,7 +36,7 @@ describe('FakePayPalGateway', () => {
     it('returns capture ID and status', async () => {
       const result = await gateway.captureOrder('FAKE-ORDER-1');
       expect(result.captureId).toMatch(/^FAKE-CAPTURE-/);
-      expect(result.status).toBe('COMPLETED');
+      expect(result.status).toBe(PayPalCaptureStatus.COMPLETED);
     });
   });
 
@@ -50,7 +51,7 @@ describe('FakePayPalGateway', () => {
         items: [],
       });
       expect(result.paypalBatchId).toMatch(/^FAKE-BATCH-/);
-      expect(result.status).toBe('PROCESSING');
+      expect(result.status).toBe(PayPalBatchStatus.PROCESSING);
     });
   });
 
