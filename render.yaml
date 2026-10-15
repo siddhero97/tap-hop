@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: tabhop-api
+    runtime: node
+    region: oregon
+    plan: starter
+    buildCommand: pnpm install --frozen-lockfile && pnpm build
+    startCommand: pnpm -F api start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: LOG_LEVEL
+        value: info
+      - key: PAYPAL_MODE
+        value: sandbox
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tabhop-db
+          property: connectionString
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+
+databases:
+  - name: tabhop-db
+    engine: postgres
+    version: '16'
+    plan: starter
+
+preDeployCommand: 'cd packages/database && pnpm prisma migrate deploy'
