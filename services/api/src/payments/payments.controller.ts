@@ -7,6 +7,21 @@ import { logger } from '../lib/logger.js';
 import { OrderIdSchema } from './payments.validator.js';
 
 /**
+ * Mark order as FAILED, logging any database errors but not propagating them
+ * Used when capture fails to ensure order state reflects the failure
+ */
+async function markOrderFailed(orderId: string): Promise<void> {
+  try {
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { status: OrderStatus.FAILED },
+    });
+  } catch (updateError) {
+    logger.error({ error: String(updateError) }, 'Failed to mark order as FAILED');
+  }
+}
+
+/**
  * Attempt settlement dispatch after capture succeeds
  * Returns success response with settlement result, or success with error if settlement fails
  */
@@ -255,14 +270,7 @@ export async function capturePayPalOrder(req: Request, res: Response): Promise<v
     res.status(settlementResponse.status).json(settlementResponse.body);
   } catch (error) {
     // Capture or other failure - mark order as FAILED and return error
-    try {
-      await prisma.order.update({
-        where: { id: req.params.id },
-        data: { status: OrderStatus.FAILED },
-      });
-    } catch (updateError) {
-      logger.error({ error: String(updateError) }, 'Failed to mark order as FAILED');
-    }
+    await markOrderFailed(req.params.id);
 
     logger.error(
       { error: String(error), orderId: req.params.id },
