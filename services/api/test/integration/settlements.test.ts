@@ -41,15 +41,6 @@ describe('Settlements Routes', () => {
     testVenueId = venue.id;
   });
 
-  afterEach(async () => {
-    // Clean up
-    await prisma.payoutBatchItem.deleteMany({});
-    await prisma.payoutBatch.deleteMany({});
-    await prisma.orderItem.deleteMany({});
-    await prisma.order.deleteMany({});
-    await prisma.merchant.deleteMany({});
-  });
-
   describe('POST /settlements/:orderId/retry', () => {
     it('should retry a failed settlement batch', async () => {
       // Create order with failed batch
@@ -62,6 +53,20 @@ describe('Settlements Routes', () => {
           totalAmount: new Decimal('113.00'),
           status: 'CAPTURED',
         },
+      });
+
+      const item = await prisma.item.create({
+        data: {
+          merchantId: testVenueId,
+          name: 'Retry Item',
+          description: 'Retry item',
+          price: new Decimal('100.00'),
+          category: 'Food',
+          isActive: true,
+        },
+      });
+      await prisma.orderItem.create({
+        data: { orderId: order.id, itemId: item.id, quantity: 1, unitPrice: new Decimal('100.00') },
       });
 
       const batch = await prisma.payoutBatch.create({

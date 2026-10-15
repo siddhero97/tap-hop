@@ -67,7 +67,8 @@ describe('Webhooks Routes', () => {
       const response = await request(app)
         .post('/webhooks/paypal')
         .send(payload)
-        .set('Content-Type', 'application/json');
+        .set('Content-Type', 'application/json')
+        .set('x-fake-signature', 'ok');
 
       expect(response.status).toBe(200);
       expect(response.body.status).toBe('success');
@@ -76,7 +77,7 @@ describe('Webhooks Routes', () => {
       const webhookEvent = await prisma.webhookEvent.findUnique({
         where: { eventId: 'WH-EVENT-001' },
       });
-      expect(webhookEvent).toBeDefined();
+      expect(webhookEvent).not.toBeNull();
       expect(webhookEvent?.eventType).toBe('PAYMENT.CAPTURE.COMPLETED');
     });
 

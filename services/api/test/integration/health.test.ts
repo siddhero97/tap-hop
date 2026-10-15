@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
+import { prisma } from '@tabhop/database';
 import { createApp } from '../../src/app.js';
 import { FakePayPalGateway } from '../../src/payments/payments.fake-gateway.js';
 import { SettlementService } from '../../src/settlements/settlements.service.js';
@@ -52,15 +53,14 @@ describe('Health Route', () => {
     it('should return 503 when database is down', async () => {
       const app = createTestApp('sandbox');
 
-      // Mock Prisma to fail
-      const originalPrisma = require('@tabhop/database').prisma;
-      vi.mocked(originalPrisma.$queryRaw).mockRejectedValueOnce(
+      vi.spyOn(prisma, '$queryRaw').mockRejectedValueOnce(
         new Error('Database connection failed')
       );
 
       const response = await request(app).get('/health');
 
-      // Should still return but with status fail
+      expect(response.status).toBe(503);
+      expect(response.body.status).toBe('fail');
       expect(response.body.db).toBe('fail');
     });
 
@@ -79,18 +79,17 @@ describe('Health Route', () => {
       const response = await request(app).get('/health');
 
       expect(response.status).toBe(200);
-      expect(response.body.status).toBeOneOf(['ok', 'fail']);
+      expect(response.body.status).toBe('ok');
     });
 
     it('should handle missing gateway gracefully', async () => {
-      const app = Express();
-      app.use(Express.json());
-      app.use('/health', healthRouter);
+      const app = createApp();
       // No gateway configured
 
       const response = await request(app).get('/health');
 
-      expect([200, 500]).toContain(response.status);
+      expect(response.status).toBe(200);
+      expect(response.body.paypal).toBe('unknown');
     });
 
     it('should return appropriate status codes', async () => {
