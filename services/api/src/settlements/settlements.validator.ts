@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PayoutStatus } from '@tabhop/database';
 
 /**
  * Zod schema for retry request
@@ -16,7 +17,12 @@ export const GetSettlementsSchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   pageSize: z.coerce.number().int().positive().optional().default(10),
   venueId: z.string().uuid().optional(),
-  status: z.enum(['QUEUED', 'PROCESSING', 'COMPLETED', 'FAILED']).optional(),
+  status: z.enum([
+    PayoutStatus.QUEUED,
+    PayoutStatus.PROCESSING,
+    PayoutStatus.COMPLETED,
+    PayoutStatus.FAILED,
+  ]).optional(),
   startDate: z.coerce.date().optional(),
   endDate: z.coerce.date().optional(),
 });
