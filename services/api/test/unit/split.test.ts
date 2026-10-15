@@ -1,4 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// Mock @tabhop/database before importing modules that use it
+vi.mock('@tabhop/database', () => ({
+  MerchantType: {
+    PRIMARY_VENUE: 'PRIMARY_VENUE',
+    EXTERNAL_PARTNER: 'EXTERNAL_PARTNER',
+  },
+}));
+
 import { computeSplit } from '../../src/settlements/settlements.split';
 import { RecipientType, type OrderWithItems } from '../../src/orders/orders.model';
 

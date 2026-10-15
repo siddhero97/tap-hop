@@ -91,7 +91,7 @@ export class SettlementService {
       totalCents: toCents(order.totalAmount),
       items: order.items.map((oi: any) => ({
         merchantId: oi.item.merchantId,
-        merchantType: oi.item.merchant.merchantType as 'PRIMARY_VENUE' | 'EXTERNAL_PARTNER',
+        merchantType: oi.item.merchant.merchantType,
         commissionRate: parseFloat(oi.item.merchant.commissionRate.toString()),
         lineCents: toCents(oi.unitPrice) * oi.quantity,
       })),

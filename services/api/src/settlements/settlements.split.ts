@@ -1,4 +1,5 @@
 import { RecipientType, type SplitRow, type OrderWithItems } from '../orders/orders.model.js';
+import { MerchantType } from '@tabhop/database';
 import { assertCentInvariant } from '../lib/money.js';
 
 /**
@@ -19,7 +20,7 @@ export function computeSplit(order: OrderWithItems, vendorEmails: Map<string, st
 
   // Process line items
   for (const item of order.items) {
-    if (item.merchantType === 'PRIMARY_VENUE') {
+    if (item.merchantType === MerchantType.PRIMARY_VENUE) {
       // Venue item: 100% to venue
       addOrAccumulate(rows, `venue-${order.venueId}`, {
         recipientType: RecipientType.PRIMARY_VENUE,

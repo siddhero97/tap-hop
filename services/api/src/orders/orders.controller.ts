@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { prisma, OrderStatus } from '@tabhop/database';
+import { prisma, OrderStatus, MerchantType } from '@tabhop/database';
 import { computeOrderTotal, pricingToDecimals } from './orders.service.js';
 import { logger } from '../lib/logger.js';
 import { CreateOrderRequest, OrderIdSchema } from './orders.validator.js';
@@ -86,7 +86,7 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
       where: { id: input.venueId },
     });
 
-    if (!venue || venue.merchantType !== 'PRIMARY_VENUE') {
+    if (!venue || venue.merchantType !== MerchantType.PRIMARY_VENUE) {
       res.status(404).json({
         status: 'error',
         code: 'NOT_FOUND',

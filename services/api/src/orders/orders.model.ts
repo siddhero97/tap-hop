@@ -1,3 +1,5 @@
+import { MerchantType } from '@tabhop/database';
+
 export enum OrderStatus {
   PENDING = 'PENDING',
   AUTHORIZED = 'AUTHORIZED',
@@ -23,7 +25,7 @@ export interface OrderWithItems {
   totalCents: number;
   items: Array<{
     merchantId: string;
-    merchantType: 'PRIMARY_VENUE' | 'EXTERNAL_PARTNER';
+    merchantType: MerchantType;
     commissionRate: number;
     lineCents: number;
   }>;

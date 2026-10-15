@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { prisma, PayoutStatus } from '@tabhop/database';
+import { prisma, PayoutStatus, MerchantType } from '@tabhop/database';
 import { SettlementService } from './settlements.service.js';
 import { logger } from '../lib/logger.js';
 import { GetSettlementsSchema, GetSettlementsQuery, OrderIdSchema } from './settlements.validator.js';
@@ -194,7 +194,7 @@ export async function getSettlements(req: Request, res: Response): Promise<void>
     const rows = batches.map((batch) => {
       const partnerNames = new Set<string>();
       batch.order.items.forEach((oi) => {
-        if (oi.item.merchant.merchantType === 'EXTERNAL_PARTNER') {
+        if (oi.item.merchant.merchantType === MerchantType.EXTERNAL_PARTNER) {
           partnerNames.add(oi.item.merchant.businessName);
         }
       });

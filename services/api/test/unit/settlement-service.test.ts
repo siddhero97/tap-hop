@@ -24,6 +24,10 @@ vi.mock('@tabhop/database', () => ({
     COMPLETED: 'COMPLETED',
     FAILED: 'FAILED',
   },
+  MerchantType: {
+    PRIMARY_VENUE: 'PRIMARY_VENUE',
+    EXTERNAL_PARTNER: 'EXTERNAL_PARTNER',
+  },
 }));
 
 // Now import SettlementService after mock is set up
