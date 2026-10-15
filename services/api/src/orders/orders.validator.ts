@@ -23,3 +23,5 @@ export type CreateOrderRequest = z.infer<typeof CreateOrderSchema>;
  * Validation schema for order ID (UUID format)
  */
 export const OrderIdSchema = z.string().uuid('Invalid order ID format');
+
+export const OrderIdParamsSchema = z.object({ id: OrderIdSchema });

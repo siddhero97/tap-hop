@@ -33,3 +33,5 @@ export type GetSettlementsQuery = z.infer<typeof GetSettlementsSchema>;
  * Validation schema for order ID (UUID format)
  */
 export const OrderIdSchema = z.string().uuid('Invalid order ID format');
+
+export const SettlementOrderParamsSchema = z.object({ orderId: OrderIdSchema });

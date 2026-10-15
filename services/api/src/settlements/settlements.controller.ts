@@ -2,7 +2,8 @@ import { Request, Response } from 'express';
 import { prisma, PayoutStatus, MerchantType } from '@tabhop/database';
 import { SettlementService } from './settlements.service.js';
 import { logger } from '../lib/logger.js';
-import { GetSettlementsSchema, GetSettlementsQuery, OrderIdSchema } from './settlements.validator.js';
+import { GetSettlementsQuery } from './settlements.validator.js';
+import { getValidated } from '../middleware/validate.js';
 
 /**
  * POST /settlements/:orderId/retry - Retry a failed settlement batch
@@ -22,17 +23,6 @@ export async function retrySettlement(req: Request, res: Response): Promise<void
     }
 
     const service = settlementService as SettlementService;
-
-    // Validate UUID format
-    const parseResult = OrderIdSchema.safeParse(orderId);
-    if (!parseResult.success) {
-      res.status(400).json({
-        status: 'error',
-        code: 'VALIDATION_ERROR',
-        message: 'Invalid order ID format',
-      });
-      return;
-    }
 
     // Fetch order and batch
     const order = await prisma.order.findUnique({
@@ -104,19 +94,7 @@ export async function retrySettlement(req: Request, res: Response): Promise<void
  */
 export async function getSettlements(req: Request, res: Response): Promise<void> {
   try {
-    // Validate query params
-    const parseResult = GetSettlementsSchema.safeParse(req.query);
-    if (!parseResult.success) {
-      res.status(400).json({
-        status: 'error',
-        code: 'VALIDATION_ERROR',
-        message: 'Invalid query parameters',
-        errors: parseResult.error.errors,
-      });
-      return;
-    }
-
-    const query = parseResult.data as GetSettlementsQuery;
+    const query = getValidated<GetSettlementsQuery>(req);
     const skip = (query.page - 1) * query.pageSize;
 
     // Build where clause

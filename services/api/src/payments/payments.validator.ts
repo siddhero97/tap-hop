@@ -22,3 +22,5 @@ export type CapturePayPalOrderRequest = z.infer<typeof CapturePayPalOrderSchema>
  * Validation schema for order ID (UUID format)
  */
 export const OrderIdSchema = z.string().uuid('Invalid order ID format');
+
+export const OrderIdParamsSchema = z.object({ id: OrderIdSchema });

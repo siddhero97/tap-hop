@@ -2,7 +2,8 @@ import { Request, Response } from 'express';
 import { prisma, OrderStatus, MerchantType } from '@tabhop/database';
 import { computeOrderTotal, pricingToDecimals } from './orders.service.js';
 import { logger } from '../lib/logger.js';
-import { CreateOrderRequest, OrderIdSchema } from './orders.validator.js';
+import { CreateOrderRequest } from './orders.validator.js';
+import { getValidated } from '../middleware/validate.js';
 
 /**
  * POST /orders - Create a new order
@@ -10,7 +11,7 @@ import { CreateOrderRequest, OrderIdSchema } from './orders.validator.js';
  */
 export async function createOrder(req: Request, res: Response): Promise<void> {
   try {
-    const input = (req as any).validatedData as CreateOrderRequest;
+    const input = getValidated<CreateOrderRequest>(req);
 
     // Check for idempotency
     if (input.idempotencyKey) {
@@ -199,17 +200,6 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
 export async function getOrder(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-
-    // Validate UUID format
-    const parseResult = OrderIdSchema.safeParse(id);
-    if (!parseResult.success) {
-      res.status(400).json({
-        status: 'error',
-        code: 'VALIDATION_ERROR',
-        message: 'Invalid order ID format',
-      });
-      return;
-    }
 
     const order = await prisma.order.findUnique({
       where: { id },

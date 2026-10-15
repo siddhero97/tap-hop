@@ -32,3 +32,10 @@ export function validateMiddleware(
     next();
   };
 }
+
+/**
+ * Typed accessor for data attached by validateMiddleware.
+ */
+export function getValidated<T>(req: Request): T {
+  return (req as any).validatedData as T;
+}

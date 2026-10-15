@@ -4,7 +4,6 @@ import { PayPalGateway } from './payments.gateway.js';
 import { PayPalGateway as SettlementPayPalGateway } from './payments.gateway.js';
 import type { SettlementService } from '../settlements/settlements.service.js';
 import { logger } from '../lib/logger.js';
-import { OrderIdSchema } from './payments.validator.js';
 
 /**
  * Mark order as FAILED, logging any database errors but not propagating them
@@ -86,17 +85,6 @@ export async function createPayPalOrder(req: Request, res: Response): Promise<vo
     }
 
     const paypalGateway = gateway as PayPalGateway;
-
-    // Validate UUID format
-    const parseResult = OrderIdSchema.safeParse(orderId);
-    if (!parseResult.success) {
-      res.status(400).json({
-        status: 'error',
-        code: 'VALIDATION_ERROR',
-        message: 'Invalid order ID format',
-      });
-      return;
-    }
 
     // Fetch order
     const order = await prisma.order.findUnique({
@@ -201,17 +189,6 @@ export async function capturePayPalOrder(req: Request, res: Response): Promise<v
 
     const paypalGateway = gateway as PayPalGateway;
     const service = settlementService as SettlementService;
-
-    // Validate UUID format
-    const parseResult = OrderIdSchema.safeParse(orderId);
-    if (!parseResult.success) {
-      res.status(400).json({
-        status: 'error',
-        code: 'VALIDATION_ERROR',
-        message: 'Invalid order ID format',
-      });
-      return;
-    }
 
     // Fetch order
     const order = await prisma.order.findUnique({

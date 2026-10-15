@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { validateMiddleware } from '../middleware/validate.js';
 import { createOrder, getOrder } from './orders.controller.js';
-import { CreateOrderSchema } from './orders.validator.js';
+import { CreateOrderSchema, OrderIdParamsSchema } from './orders.validator.js';
 
 const router = Router();
 
@@ -13,6 +13,6 @@ router.post('/', validateMiddleware(CreateOrderSchema, 'body'), createOrder);
 /**
  * GET /orders/:id - Retrieve an order with items and amounts
  */
-router.get('/:id', getOrder);
+router.get('/:id', validateMiddleware(OrderIdParamsSchema, 'params'), getOrder);
 
 export { router as ordersRouter };
