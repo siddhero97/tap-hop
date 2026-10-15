@@ -1,4 +1,4 @@
-import { toCents, fromCents } from '../../lib/money.js';
+import { toCents, fromCents } from '../lib/money.js';
 import { Decimal } from '@prisma/client';
 
 /**

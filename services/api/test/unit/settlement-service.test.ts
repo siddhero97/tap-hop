@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { OrderStatus } from '../../src/modules/orders/types';
-import { PayPalBatchStatus } from '../../src/modules/payments/constants';
-import { FakePayPalGateway } from '../../src/modules/payments/fake-gateway';
+import { OrderStatus } from '../../src/orders/orders.model';
+import { PayPalBatchStatus } from '../../src/payments/payments.model';
+import { FakePayPalGateway } from '../../src/payments/payments.fake-gateway';
 
 // Set up mock BEFORE importing SettlementService
 vi.mock('@tabhop/database', () => ({
@@ -27,7 +27,7 @@ vi.mock('@tabhop/database', () => ({
 }));
 
 // Now import SettlementService after mock is set up
-import { SettlementService } from '../../src/modules/settlements/service';
+import { SettlementService } from '../../src/settlements/settlements.service';
 import { prisma } from '@tabhop/database';
 
 /**

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeOrderTotal, pricingToDecimals } from '../../src/modules/orders/pricing';
+import { computeOrderTotal, pricingToDecimals } from '../../src/orders/orders.service';
 import { Decimal } from '@prisma/client';
 
 describe('pricing', () => {

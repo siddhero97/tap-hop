@@ -2,11 +2,11 @@ import Express from 'express';
 import { requestIdMiddleware } from './middleware/request-id.js';
 import { authMiddleware } from './middleware/auth.js';
 import { errorHandlerMiddleware } from './middleware/error-handler.js';
-import { healthRouter } from './routes/health.js';
-import { ordersRouter } from './routes/orders.js';
-import { paymentsRouter } from './routes/payments.js';
-import { settlementsRouter } from './routes/settlements.js';
-import { webhooksRouter } from './routes/webhooks.js';
+import { healthRouter } from './health/health.routes.js';
+import { ordersRouter } from './orders/orders.routes.js';
+import { paymentsRouter } from './payments/payments.routes.js';
+import { settlementsRouter } from './settlements/settlements.routes.js';
+import { webhooksRouter } from './webhooks/webhooks.routes.js';
 
 /**
  * Create and configure Express application with middleware and routes

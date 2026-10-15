@@ -1,6 +1,6 @@
-import { PayPalGateway, PayoutBatchRequest } from './gateway.js';
-import { PayPalCaptureStatus, PayPalBatchStatus } from './constants.js';
-import { logger } from '../../lib/logger.js';
+import { PayPalGateway, PayoutBatchRequest } from './payments.gateway.js';
+import { PayPalCaptureStatus, PayPalBatchStatus } from './payments.model.js';
+import { logger } from '../lib/logger.js';
 
 /**
  * PayPal REST gateway for sandbox and production.

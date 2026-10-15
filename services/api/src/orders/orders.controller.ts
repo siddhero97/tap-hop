@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import { prisma, OrderStatus } from '@tabhop/database';
-import { computeOrderTotal, pricingToDecimals } from '../modules/orders/pricing.js';
+import { computeOrderTotal, pricingToDecimals } from './orders.service.js';
 import { logger } from '../lib/logger.js';
-import { CreateOrderRequest, OrderIdSchema } from '../validators/orders.js';
+import { CreateOrderRequest, OrderIdSchema } from './orders.validator.js';
 
 /**
  * POST /orders - Create a new order

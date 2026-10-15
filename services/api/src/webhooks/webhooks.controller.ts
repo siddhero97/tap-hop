@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { PayPalGateway } from '../modules/payments/gateway.js';
-import { WebhookService } from '../modules/webhooks/service.js';
+import { PayPalGateway } from '../payments/payments.gateway.js';
+import { WebhookService } from './webhooks.service.js';
 import { logger } from '../lib/logger.js';
 
 /**

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { retrySettlement, getSettlements } from '../controllers/settlements.js';
+import { retrySettlement, getSettlements } from './settlements.controller.js';
 
 const router = Router();
 

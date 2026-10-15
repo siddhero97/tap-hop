@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { FakePayPalGateway } from '../../src/modules/payments/fake-gateway';
-import { PayPalCaptureStatus, PayPalBatchStatus } from '../../src/modules/payments/constants';
+import { FakePayPalGateway } from '../../src/payments/payments.fake-gateway';
+import { PayPalCaptureStatus, PayPalBatchStatus } from '../../src/payments/payments.model';
 
 describe('FakePayPalGateway', () => {
   let gateway: FakePayPalGateway;

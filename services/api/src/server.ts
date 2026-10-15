@@ -1,11 +1,11 @@
 import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { logger } from './lib/logger.js';
-import { FakePayPalGateway } from './modules/payments/fake-gateway.js';
-import { PayPalRestGateway } from './modules/payments/rest-gateway.js';
-import { SettlementService } from './modules/settlements/service.js';
-import { WebhookService } from './modules/webhooks/service.js';
-import { PayPalGateway } from './modules/payments/gateway.js';
+import { FakePayPalGateway } from './payments/payments.fake-gateway.js';
+import { PayPalRestGateway } from './payments/payments.rest-gateway.js';
+import { SettlementService } from './settlements/settlements.service.js';
+import { WebhookService } from './webhooks/webhooks.service.js';
+import { PayPalGateway } from './payments/payments.gateway.js';
 import { prisma } from '@tabhop/database';
 
 /**

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { computeSplit } from '../../src/modules/settlements/split';
-import { RecipientType, type OrderWithItems } from '../../src/modules/orders/types';
+import { computeSplit } from '../../src/settlements/settlements.split';
+import { RecipientType, type OrderWithItems } from '../../src/orders/orders.model';
 
 describe('settlement split', () => {
   describe('computeSplit', () => {

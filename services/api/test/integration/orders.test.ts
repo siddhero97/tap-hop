@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
 import { prisma, OrderStatus } from '@tabhop/database';
 import { createApp } from '../../src/app.js';
-import { FakePayPalGateway } from '../../src/modules/payments/fake-gateway.js';
-import { SettlementService } from '../../src/modules/settlements/service.js';
-import { WebhookService } from '../../src/modules/webhooks/service.js';
+import { FakePayPalGateway } from '../../src/payments/payments.fake-gateway.js';
+import { SettlementService } from '../../src/settlements/settlements.service.js';
+import { WebhookService } from '../../src/webhooks/webhooks.service.js';
 import { Decimal } from '@prisma/client';
 
 // Create Express app for testing

@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import { prisma, OrderStatus } from '@tabhop/database';
-import { PayPalGateway } from '../modules/payments/gateway.js';
-import { SettlementService } from '../modules/settlements/service.js';
+import { PayPalGateway } from './payments.gateway.js';
+import { PayPalGateway as SettlementPayPalGateway } from './payments.gateway.js';
+import type { SettlementService } from '../settlements/settlements.service.js';
 import { logger } from '../lib/logger.js';
-import { OrderIdSchema } from '../validators/payments.js';
+import { OrderIdSchema } from './payments.validator.js';
 
 /**
  * POST /orders/:id/paypal - Create a PayPal order for payment

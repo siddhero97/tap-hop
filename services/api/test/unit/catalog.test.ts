@@ -37,7 +37,7 @@ vi.mock('@tabhop/database', () => {
 });
 
 // Import after mocking
-import { CatalogService } from '../../src/modules/catalog/service';
+import { CatalogService } from '../../src/catalog/catalog.service';
 
 describe('CatalogService', () => {
   let service: CatalogService;

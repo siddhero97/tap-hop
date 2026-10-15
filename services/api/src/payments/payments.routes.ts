@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createPayPalOrder, capturePayPalOrder } from '../controllers/payments.js';
+import { createPayPalOrder, capturePayPalOrder } from './payments.controller.js';
 
 const router = Router({ mergeParams: true });
 

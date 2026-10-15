@@ -1,5 +1,5 @@
-import { RecipientType, type SplitRow, type OrderWithItems } from '../orders/types.js';
-import { assertCentInvariant } from '../../lib/money.js';
+import { RecipientType, type SplitRow, type OrderWithItems } from '../orders/orders.model.js';
+import { assertCentInvariant } from '../lib/money.js';
 
 /**
  * Compute split of order amount across venue, partners, staff, platform.

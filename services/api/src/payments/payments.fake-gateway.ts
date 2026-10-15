@@ -1,5 +1,5 @@
-import { PayPalGateway, PayoutBatchRequest } from './gateway.js';
-import { PayPalCaptureStatus, PayPalBatchStatus } from './constants.js';
+import { PayPalGateway, PayoutBatchRequest } from './payments.gateway.js';
+import { PayPalCaptureStatus, PayPalBatchStatus } from './payments.model.js';
 
 /**
  * In-memory PayPal gateway for testing.

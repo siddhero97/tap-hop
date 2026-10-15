@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { handlePayPalWebhook } from '../controllers/webhooks.js';
+import { handlePayPalWebhook } from './webhooks.controller.js';
 
 const router = Router();
 

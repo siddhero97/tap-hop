@@ -1,4 +1,4 @@
-import { PayPalCaptureStatus, PayPalBatchStatus } from './constants.js';
+import { PayPalCaptureStatus, PayPalBatchStatus } from './payments.model.js';
 
 /**
  * PayPal gateway interface for order creation, capture, and payouts.

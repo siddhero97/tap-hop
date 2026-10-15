@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { PayPalRestGateway } from '../../src/modules/payments/rest-gateway';
-import { PayPalCaptureStatus, PayPalBatchStatus } from '../../src/modules/payments/constants';
+import { PayPalRestGateway } from '../../src/payments/payments.rest-gateway';
+import { PayPalCaptureStatus, PayPalBatchStatus } from '../../src/payments/payments.model';
 
 describe('PayPalRestGateway (mocked)', () => {
   let gateway: PayPalRestGateway;

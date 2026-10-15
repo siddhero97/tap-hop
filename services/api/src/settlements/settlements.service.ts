@@ -4,11 +4,11 @@ import {
   PayoutBatch,
   PayoutStatus,
 } from '@tabhop/database';
-import { PayPalGateway, PayoutBatchRequest } from '../payments/gateway.js';
-import { PayPalBatchStatus } from '../payments/constants.js';
-import { OrderStatus, type OrderWithItems, type SplitRow } from '../orders/types.js';
-import { computeSplit } from './split.js';
-import { toCents, fromCents } from '../../lib/money.js';
+import { PayPalGateway, PayoutBatchRequest } from '../payments/payments.gateway.js';
+import { PayPalBatchStatus } from '../payments/payments.model.js';
+import { OrderStatus, type OrderWithItems, type SplitRow } from '../orders/orders.model.js';
+import { computeSplit } from './settlements.split.js';
+import { toCents, fromCents } from '../lib/money.js';
 
 /**
  * Settlement dispatch service.

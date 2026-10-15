@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import { prisma, PayoutStatus } from '@tabhop/database';
-import { SettlementService } from '../modules/settlements/service.js';
+import { SettlementService } from './settlements.service.js';
 import { logger } from '../lib/logger.js';
-import { GetSettlementsSchema, GetSettlementsQuery, OrderIdSchema } from '../validators/settlements.js';
+import { GetSettlementsSchema, GetSettlementsQuery, OrderIdSchema } from './settlements.validator.js';
 
 /**
  * POST /settlements/:orderId/retry - Retry a failed settlement batch

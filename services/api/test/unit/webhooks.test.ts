@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { WebhookService, WebhookPayload } from '../../src/modules/webhooks/service';
+import { WebhookService, WebhookPayload } from '../../src/webhooks/webhooks.service';
 
 describe('WebhookService', () => {
   let service: WebhookService;

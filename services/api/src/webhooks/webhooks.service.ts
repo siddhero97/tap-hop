@@ -1,23 +1,6 @@
-import { PayPalGateway } from '../payments/gateway.js';
-import { logger } from '../../lib/logger.js';
-
-/**
- * PayPal webhook event payload structure
- */
-export interface WebhookPayload {
-  id: string;
-  event_type: string;
-  resource?: {
-    id?: string;
-    status?: string;
-    supplementary_data?: {
-      related_ids?: {
-        order_id?: string;
-      };
-    };
-  };
-  [key: string]: any;
-}
+import { PayPalGateway } from '../payments/payments.gateway.js';
+import { logger } from '../lib/logger.js';
+import type { WebhookPayload } from './webhooks.model.js';
 
 /**
  * WebhookService handles PayPal webhook events.
