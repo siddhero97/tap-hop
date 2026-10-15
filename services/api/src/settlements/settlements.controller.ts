@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma, PayoutStatus, MerchantType } from '@tabhop/database';
-import { SettlementService } from './settlements.service.js';
+import { getServices } from '../lib/app-services.js';
 import { logger } from '../lib/logger.js';
 import { GetSettlementsQuery } from './settlements.validator.js';
 import { getValidated } from '../middleware/validate.js';
@@ -11,18 +11,7 @@ import { getValidated } from '../middleware/validate.js';
 export async function retrySettlement(req: Request, res: Response): Promise<void> {
   try {
     const { orderId } = req.params;
-    const { settlementService } = req.app.locals;
-
-    if (!settlementService || !('dispatch' in settlementService)) {
-      res.status(500).json({
-        status: 'error',
-        code: 'INTERNAL_ERROR',
-        message: 'Settlement service not configured',
-      });
-      return;
-    }
-
-    const service = settlementService as SettlementService;
+    const { settlementService: service } = getServices(req);
 
     // Fetch order and batch
     const order = await prisma.order.findUnique({

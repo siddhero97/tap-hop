@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '@tabhop/database';
+import { getServices } from '../lib/app-services.js';
 import { logger } from '../lib/logger.js';
 
 /**
@@ -21,7 +22,7 @@ async function checkDatabaseHealth(): Promise<'ok' | 'fail'> {
  */
 export async function getHealth(req: Request, res: Response): Promise<void> {
   try {
-    const { gateway, paypalMode } = req.app.locals;
+    const { gateway, paypalMode } = getServices(req);
     const result: any = {
       status: 'ok',
       db: await checkDatabaseHealth(),
@@ -31,7 +32,7 @@ export async function getHealth(req: Request, res: Response): Promise<void> {
     // Check PayPal connectivity (if not in fake mode)
     if (paypalMode === 'fake') {
       result.paypal = 'skipped';
-    } else if (gateway && 'createOrder' in gateway) {
+    } else if (gateway) {
       result.paypal = 'ok';
     } else {
       result.paypal = 'unknown';

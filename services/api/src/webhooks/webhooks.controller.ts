@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PayPalGateway } from '../payments/payments.gateway.js';
 import { WebhookService } from './webhooks.service.js';
+import { getServices } from '../lib/app-services.js';
 import { logger } from '../lib/logger.js';
 
 /**
@@ -42,30 +43,9 @@ async function processWebhookEvent(
  */
 export async function handlePayPalWebhook(req: Request, res: Response): Promise<void> {
   try {
-    const { gateway, webhookService } = req.app.locals;
+    const { gateway: paypalGateway, webhookService: service } = getServices(req);
     const rawBody = (req as any).rawBody;
     const headers = req.headers as Record<string, string>;
-
-    if (!gateway || !('verifyWebhook' in gateway)) {
-      logger.error('Payment gateway not configured');
-      res.status(200).json({
-        status: 'error',
-        code: 'GATEWAY_NOT_CONFIGURED',
-      });
-      return;
-    }
-
-    if (!webhookService || !('processPayPalEvent' in webhookService)) {
-      logger.error('Webhook service not configured');
-      res.status(200).json({
-        status: 'error',
-        code: 'SERVICE_NOT_CONFIGURED',
-      });
-      return;
-    }
-
-    const paypalGateway = gateway as PayPalGateway;
-    const service = webhookService as WebhookService;
 
     // Process webhook event
     const response = await processWebhookEvent(service, headers, rawBody, paypalGateway);

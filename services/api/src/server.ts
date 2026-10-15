@@ -6,6 +6,7 @@ import { PayPalRestGateway } from './payments/payments.rest-gateway.js';
 import { SettlementService } from './settlements/settlements.service.js';
 import { WebhookService } from './webhooks/webhooks.service.js';
 import { PayPalGateway } from './payments/payments.gateway.js';
+import { registerServices } from './lib/app-services.js';
 import { prisma } from '@tabhop/database';
 
 /**
@@ -34,11 +35,12 @@ async function main(): Promise<void> {
     const settlementService = new SettlementService(gateway);
     const webhookService = new WebhookService(prisma);
 
-    // Attach services to app locals for use in controllers
-    app.locals.gateway = gateway;
-    app.locals.settlementService = settlementService;
-    app.locals.webhookService = webhookService;
-    app.locals.paypalMode = env.PAYPAL_MODE;
+    registerServices(app, {
+      gateway,
+      settlementService,
+      webhookService,
+      paypalMode: env.PAYPAL_MODE,
+    });
 
     // Start server
     app.listen(env.PORT, () => {

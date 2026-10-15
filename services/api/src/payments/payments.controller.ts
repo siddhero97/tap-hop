@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma, OrderStatus } from '@tabhop/database';
-import { PayPalGateway } from './payments.gateway.js';
-import { PayPalGateway as SettlementPayPalGateway } from './payments.gateway.js';
+import { getServices } from '../lib/app-services.js';
 import type { SettlementService } from '../settlements/settlements.service.js';
 import { logger } from '../lib/logger.js';
 
@@ -73,18 +72,7 @@ async function attemptSettlementDispatch(
 export async function createPayPalOrder(req: Request, res: Response): Promise<void> {
   try {
     const { id: orderId } = req.params;
-    const { gateway } = req.app.locals;
-
-    if (!gateway || !('createOrder' in gateway)) {
-      res.status(500).json({
-        status: 'error',
-        code: 'INTERNAL_ERROR',
-        message: 'Payment gateway not configured',
-      });
-      return;
-    }
-
-    const paypalGateway = gateway as PayPalGateway;
+    const { gateway: paypalGateway } = getServices(req);
 
     // Fetch order
     const order = await prisma.order.findUnique({
@@ -167,28 +155,7 @@ export async function createPayPalOrder(req: Request, res: Response): Promise<vo
 export async function capturePayPalOrder(req: Request, res: Response): Promise<void> {
   try {
     const { id: orderId } = req.params;
-    const { gateway, settlementService } = req.app.locals;
-
-    if (!gateway || !('captureOrder' in gateway)) {
-      res.status(500).json({
-        status: 'error',
-        code: 'INTERNAL_ERROR',
-        message: 'Payment gateway not configured',
-      });
-      return;
-    }
-
-    if (!settlementService || !('dispatch' in settlementService)) {
-      res.status(500).json({
-        status: 'error',
-        code: 'INTERNAL_ERROR',
-        message: 'Settlement service not configured',
-      });
-      return;
-    }
-
-    const paypalGateway = gateway as PayPalGateway;
-    const service = settlementService as SettlementService;
+    const { gateway: paypalGateway, settlementService: service } = getServices(req);
 
     // Fetch order
     const order = await prisma.order.findUnique({
