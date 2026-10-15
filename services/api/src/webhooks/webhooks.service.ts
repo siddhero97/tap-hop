@@ -224,3 +224,36 @@ export class WebhookService {
     }
   }
 }
+
+/**
+ * Process webhook event and return appropriate response
+ * Always returns 200 for webhooks (PayPal doesn't retry on 4xx)
+ */
+export async function processWebhookEvent(
+  service: WebhookService,
+  headers: Record<string, string>,
+  rawBody: string,
+  paypalGateway: PayPalGateway
+): Promise<any> {
+  try {
+    await service.processPayPalEvent(headers, rawBody, paypalGateway);
+    logger.info('Webhook processed successfully');
+    return {
+      status: 200,
+      body: { status: 'success' },
+    };
+  } catch (processingError) {
+    logger.warn(
+      { error: String(processingError) },
+      'Webhook processing failed'
+    );
+    return {
+      status: 200,
+      body: {
+        status: 'error',
+        code: 'PROCESSING_ERROR',
+        message: (processingError as Error).message,
+      },
+    };
+  }
+}

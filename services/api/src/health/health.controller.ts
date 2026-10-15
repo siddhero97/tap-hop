@@ -1,20 +1,7 @@
 import { Request, Response } from 'express';
-import { prisma } from '@tabhop/database';
+import { checkDatabaseHealth } from './health.service.js';
 import { getServices } from '../lib/app-services.js';
 import { logger } from '../lib/logger.js';
-
-/**
- * Check database connectivity (non-blocking)
- */
-async function checkDatabaseHealth(): Promise<'ok' | 'fail'> {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    return 'ok';
-  } catch (dbError) {
-    logger.error({ error: String(dbError) }, 'Database health check failed');
-    return 'fail';
-  }
-}
 
 /**
  * GET /health - Health check endpoint
