@@ -3,6 +3,19 @@ import { prisma } from '@tabhop/database';
 import { logger } from '../lib/logger.js';
 
 /**
+ * Check database connectivity (non-blocking)
+ */
+async function checkDatabaseHealth(): Promise<'ok' | 'fail'> {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return 'ok';
+  } catch (dbError) {
+    logger.error({ error: String(dbError) }, 'Database health check failed');
+    return 'fail';
+  }
+}
+
+/**
  * GET /health - Health check endpoint
  * Returns status of database and PayPal connectivity
  */
@@ -11,18 +24,9 @@ export async function getHealth(req: Request, res: Response): Promise<void> {
     const { gateway, paypalMode } = req.app.locals;
     const result: any = {
       status: 'ok',
-      db: 'unknown',
+      db: await checkDatabaseHealth(),
       paypal: 'unknown',
     };
-
-    // Check database connectivity (non-blocking)
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-      result.db = 'ok';
-    } catch (dbError) {
-      logger.error({ error: String(dbError) }, 'Database health check failed');
-      result.db = 'fail';
-    }
 
     // Check PayPal connectivity (if not in fake mode)
     if (paypalMode === 'fake') {
