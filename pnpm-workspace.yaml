@@ -1,0 +1,3 @@
+packages:
+  - 'services/api'
+  - 'packages/*'

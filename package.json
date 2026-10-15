@@ -1,0 +1,22 @@
+{
+  "name": "tabhop",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "docker-compose up -d && concurrently \"pnpm -r --parallel dev\" \"sleep 2 && pnpm db:seed\"",
+    "db:migrate": "pnpm -F database exec prisma migrate dev",
+    "db:reset": "pnpm -F database exec prisma migrate reset --force && pnpm db:seed",
+    "db:seed": "pnpm -F database seed",
+    "test": "pnpm -r test",
+    "test:watch": "pnpm -r test:watch",
+    "e2e": "docker-compose up -d && pnpm -F api test:e2e && docker-compose down",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "openapi": "pnpm -F api openapi"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
