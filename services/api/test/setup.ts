@@ -30,6 +30,32 @@ export class Decimal {
 // Mock @prisma/client module
 export const mockDecimal = Decimal;
 
+// Mock PrismaClient for integration tests
+const createTableMock = () => ({
+  findUnique: vi.fn(),
+  findMany: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
+  delete: vi.fn(),
+  deleteMany: vi.fn(),
+  count: vi.fn(),
+  createMany: vi.fn(),
+});
+
+export class PrismaClient {
+  order = createTableMock();
+  payoutBatch = createTableMock();
+  payoutBatchItem = createTableMock();
+  webhookEvent = createTableMock();
+  merchant = createTableMock();
+  item = createTableMock();
+  orderItem = createTableMock();
+  staff = createTableMock();
+
+  $transaction = vi.fn();
+  $queryRaw = vi.fn();
+}
+
 // Mock logger to prevent configuration issues
 vi.mock('../../src/lib/logger', () => ({
   logger: {
@@ -38,4 +64,33 @@ vi.mock('../../src/lib/logger', () => ({
     warn: vi.fn(),
     error: vi.fn(),
   },
+}));
+
+// Enums for testing
+export enum OrderStatus {
+  PENDING = 'PENDING',
+  AUTHORIZED = 'AUTHORIZED',
+  CAPTURED = 'CAPTURED',
+  FAILED = 'FAILED',
+}
+
+export enum PayoutStatus {
+  QUEUED = 'QUEUED',
+  PROCESSING = 'PROCESSING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+}
+
+export enum MerchantType {
+  PRIMARY_VENUE = 'PRIMARY_VENUE',
+  EXTERNAL_PARTNER = 'EXTERNAL_PARTNER',
+}
+
+// Mock @prisma/client before it's imported
+vi.mock('@prisma/client', () => ({
+  PrismaClient,
+  Decimal,
+  OrderStatus,
+  PayoutStatus,
+  MerchantType,
 }));
