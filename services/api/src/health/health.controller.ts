@@ -15,7 +15,7 @@ export async function getHealth(req: Request, res: Response): Promise<void> {
       paypal: 'unknown',
     };
 
-    // Check database connectivity
+    // Check database connectivity (non-blocking)
     try {
       await prisma.$queryRaw`SELECT 1`;
       result.db = 'ok';
@@ -28,13 +28,7 @@ export async function getHealth(req: Request, res: Response): Promise<void> {
     if (paypalMode === 'fake') {
       result.paypal = 'skipped';
     } else if (gateway && 'createOrder' in gateway) {
-      try {
-        // If gateway exists and we got here, assume it's OK
-        result.paypal = 'ok';
-      } catch (paypalError) {
-        logger.error({ error: String(paypalError) }, 'PayPal health check failed');
-        result.paypal = 'fail';
-      }
+      result.paypal = 'ok';
     } else {
       result.paypal = 'unknown';
     }
