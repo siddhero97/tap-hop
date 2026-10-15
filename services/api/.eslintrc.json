@@ -10,5 +10,29 @@
   },
   "rules": {
     "@typescript-eslint/no-explicit-any": "error"
-  }
+  },
+  "overrides": [
+    {
+      "files": [
+        "src/**/*.controller.ts"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@tabhop/database",
+                "message": "Controllers must not access the database; call a service instead."
+              },
+              {
+                "name": "@prisma/client",
+                "message": "Controllers must not access the database; call a service instead."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }
