@@ -7,3 +7,8 @@ import { z } from 'zod';
 export const PayPalWebhookSchema = z.object({}).passthrough();
 
 export type PayPalWebhookPayload = z.infer<typeof PayPalWebhookSchema>;
+
+/**
+ * Raw webhook body must be non-empty (needed for signature verification)
+ */
+export const RawBodySchema = z.string().min(1);

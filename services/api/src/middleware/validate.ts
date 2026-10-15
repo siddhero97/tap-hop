@@ -39,3 +39,17 @@ export function validateMiddleware(
 export function getValidated<T>(req: Request): T {
   return (req as any).validatedData as T;
 }
+
+/**
+ * Validates req.rawBody against a schema. Responds 200 with the given error code
+ * on failure (for providers such as PayPal that expect 200 for every response).
+ */
+export function validateRawBodyMiddleware(schema: ZodSchema, errorCode: string) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!schema.safeParse((req as any).rawBody).success) {
+      res.status(200).json({ status: 'error', code: errorCode });
+      return;
+    }
+    next();
+  };
+}

@@ -67,16 +67,6 @@ export async function handlePayPalWebhook(req: Request, res: Response): Promise<
     const paypalGateway = gateway as PayPalGateway;
     const service = webhookService as WebhookService;
 
-    // Validate raw body is not empty
-    if (!rawBody) {
-      logger.warn('Received empty webhook payload');
-      res.status(200).json({
-        status: 'error',
-        code: 'EMPTY_PAYLOAD',
-      });
-      return;
-    }
-
     // Process webhook event
     const response = await processWebhookEvent(service, headers, rawBody, paypalGateway);
     res.status(response.status).json(response.body);

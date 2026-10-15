@@ -1,4 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { validateRawBodyMiddleware } from '../middleware/validate.js';
+import { RawBodySchema } from './webhooks.validator.js';
 import { handlePayPalWebhook } from './webhooks.controller.js';
 
 const router = Router();
@@ -22,6 +24,6 @@ router.use(rawBodyMiddleware);
 /**
  * POST /webhooks/paypal - Receive and process PayPal webhook events
  */
-router.post('/', handlePayPalWebhook);
+router.post('/', validateRawBodyMiddleware(RawBodySchema, 'EMPTY_PAYLOAD'), handlePayPalWebhook);
 
 export { router as webhooksRouter };
