@@ -1,5 +1,25 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { WebhookService, WebhookPayload } from '../../src/webhooks/webhooks.service';
+import { OrderStatus } from '../../src/orders/orders.model';
+import { PayoutStatus } from '@tabhop/database';
+
+// Set up mock BEFORE importing WebhookService
+vi.mock('@tabhop/database', () => ({
+  PayoutStatus: {
+    QUEUED: 'QUEUED',
+    PROCESSING: 'PROCESSING',
+    COMPLETED: 'COMPLETED',
+    FAILED: 'FAILED',
+  },
+  OrderStatus: {
+    PENDING: 'PENDING',
+    AUTHORIZED: 'AUTHORIZED',
+    CAPTURED: 'CAPTURED',
+    FAILED: 'FAILED',
+  },
+}));
+
+import { WebhookService } from '../../src/webhooks/webhooks.service';
+import type { WebhookPayload } from '../../src/webhooks/webhooks.model';
 
 describe('WebhookService', () => {
   let service: WebhookService;
@@ -185,7 +205,7 @@ describe('WebhookService', () => {
         expect(mockPrisma.order.update).toHaveBeenCalledWith({
           where: { id: 'order-456' },
           data: {
-            status: 'CAPTURED',
+            status: OrderStatus.CAPTURED,
             capturedAt: expect.any(Date),
           },
         });
@@ -261,7 +281,7 @@ describe('WebhookService', () => {
 
         expect(mockPrisma.payoutBatch.update).toHaveBeenCalledWith({
           where: { id: 'batch-123' },
-          data: { status: 'SUCCESS' },
+          data: { status: PayoutStatus.COMPLETED },
         });
       });
     });
@@ -300,7 +320,7 @@ describe('WebhookService', () => {
 
         expect(mockPrisma.payoutBatch.update).toHaveBeenCalledWith({
           where: { id: 'batch-456' },
-          data: { status: 'DENIED' },
+          data: { status: PayoutStatus.FAILED },
         });
       });
     });
