@@ -103,8 +103,8 @@ export class SettlementService {
     // Build PayPal request
     const payoutRequest = this.buildPayoutRequest(split, order);
 
-    // Create batch in transaction
-    let batch: PayoutBatch;
+    // Create batch in transaction and dispatch to gateway
+    let batch: PayoutBatch | undefined;
     try {
       batch = await prisma.$transaction(async (tx: any) => {
         // Create PayoutBatch
@@ -135,12 +135,8 @@ export class SettlementService {
 
         return newBatch;
       });
-    } catch (error) {
-      throw new Error(`Failed to create payout batch: ${(error as Error).message}`);
-    }
 
-    // Call gateway
-    try {
+      // Call gateway
       const response = await this.gateway.createPayoutBatch(payoutRequest);
 
       // Update batch with response
@@ -158,14 +154,22 @@ export class SettlementService {
         status: response.status,
       };
     } catch (error) {
-      // Store error and rethrow
-      await prisma.payoutBatch.update({
-        where: { id: batch.id },
-        data: {
-          status: PayoutStatus.FAILED,
-          lastError: (error as Error).message,
-        },
-      });
+      // Enrich transaction creation errors with context
+      const errorMsg = (error as Error).message;
+      if (!batch && (errorMsg.includes('constraint') || errorMsg.includes('transaction'))) {
+        throw new Error(`Failed to create payout batch: ${errorMsg}`);
+      }
+
+      // Store error in batch if it was created
+      if (batch) {
+        await prisma.payoutBatch.update({
+          where: { id: batch.id },
+          data: {
+            status: PayoutStatus.FAILED,
+            lastError: errorMsg,
+          },
+        });
+      }
 
       throw error;
     }
