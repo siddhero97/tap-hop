@@ -1,5 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { CatalogService } from '../../src/modules/catalog/service';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
 // Mock Decimal for testing
 class MockDecimal {
@@ -25,23 +24,33 @@ const createMockItem = (overrides: any = {}): any => ({
   ...overrides,
 });
 
-// Mock prisma item repository
-const mockPrismaItem = {
-  findMany: vi.fn(),
-};
-
 // Mock the database module before importing CatalogService
-vi.mock('@tabhop/database', () => ({
-  prisma: {
-    item: mockPrismaItem,
-  },
-}));
+vi.mock('@tabhop/database', () => {
+  const findManyMock = vi.fn();
+  return {
+    prisma: {
+      item: {
+        findMany: findManyMock,
+      },
+    },
+  };
+});
+
+// Import after mocking
+import { CatalogService } from '../../src/modules/catalog/service';
 
 describe('CatalogService', () => {
   let service: CatalogService;
+  let mockPrismaItem: any;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    const module = await import('@tabhop/database');
+    mockPrismaItem = module.prisma.item;
     service = new CatalogService();
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
     vi.clearAllMocks();
   });
 

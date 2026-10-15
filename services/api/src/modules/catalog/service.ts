@@ -1,4 +1,4 @@
-import { prisma, Item, Prisma } from '@tabhop/database';
+import { prisma, Item } from '@tabhop/database';
 
 export class CatalogService {
   /**
