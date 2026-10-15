@@ -69,44 +69,31 @@ export async function retrySettlement(req: Request, res: Response): Promise<void
       return;
     }
 
-    try {
-      // Dispatch settlement retry
-      const result = await service.dispatch(orderId);
+    // Dispatch settlement retry
+    const result = await service.dispatch(orderId);
 
-      logger.info(
-        { orderId, payoutBatchId: result.payoutBatchId },
-        'Settlement retry dispatched'
-      );
+    logger.info(
+      { orderId, payoutBatchId: result.payoutBatchId },
+      'Settlement retry dispatched'
+    );
 
-      res.status(200).json({
-        status: 'success',
-        payoutBatch: {
-          id: result.payoutBatchId,
-          status: result.status,
-        },
-      });
-    } catch (dispatchError) {
-      logger.error(
-        { error: String(dispatchError), orderId },
-        'Settlement retry dispatch failed'
-      );
-
-      res.status(400).json({
-        status: 'error',
-        code: 'SETTLEMENT_DISPATCH_FAILED',
-        message: 'Failed to dispatch settlement retry',
-        details: (dispatchError as Error).message,
-      });
-    }
+    res.status(200).json({
+      status: 'success',
+      payoutBatch: {
+        id: result.payoutBatchId,
+        status: result.status,
+      },
+    });
   } catch (error) {
     logger.error(
       { error: String(error), orderId: req.params.orderId },
       'Error retrying settlement'
     );
-    res.status(500).json({
+    res.status(400).json({
       status: 'error',
-      code: 'INTERNAL_ERROR',
-      message: 'Failed to retry settlement',
+      code: 'SETTLEMENT_DISPATCH_FAILED',
+      message: 'Failed to dispatch settlement retry',
+      details: (error as Error).message,
     });
   }
 }
