@@ -83,7 +83,7 @@ export class SettlementService {
     const orderWithItems: OrderWithItems = {
       id: order.id,
       venueId: order.venueId,
-      serverStaffId: order.serverStaffId,
+      serverStaffId: order.serverStaffId ?? undefined,
       subtotalCents: toCents(order.subtotalAmount),
       taxCents: toCents(order.taxAmount),
       tipCents: toCents(order.tipAmount),
