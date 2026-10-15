@@ -1,4 +1,4 @@
-import { Decimal } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 
 export function toCents(value: string | number | Decimal): number {
   const str = typeof value === 'object' ? value.toString() : String(value);

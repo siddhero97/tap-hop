@@ -3,7 +3,7 @@ import { validateRawBodyMiddleware } from '../middleware/validate.js';
 import { RawBodySchema } from './webhooks.validator.js';
 import { handlePayPalWebhook } from './webhooks.controller.js';
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * POST /webhooks/paypal - Receive and process PayPal webhook events

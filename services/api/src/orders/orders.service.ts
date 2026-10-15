@@ -1,5 +1,5 @@
 import { toCents, fromCents } from '../lib/money.js';
-import { Decimal } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 import { prisma, OrderStatus, MerchantType } from '@tabhop/database';
 import { logger } from '../lib/logger.js';
 import { ServiceError } from '../lib/service-error.js';

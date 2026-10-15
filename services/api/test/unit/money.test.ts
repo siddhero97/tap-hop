@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { Decimal } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 import { toCents, fromCents, assertCentInvariant } from '../../src/lib/money';
 
 describe('money', () => {

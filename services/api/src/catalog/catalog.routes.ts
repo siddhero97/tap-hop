@@ -3,7 +3,7 @@ import { validateMiddleware } from '../middleware/validate.js';
 import { VenueIdParamsSchema } from './catalog.validator.js';
 import { getFullMenu, getVenueMenu, getPartnerItems } from './catalog.controller.js';
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * GET /catalog/venues/:venueId/menu - Retrieve full menu (venue + partner items)

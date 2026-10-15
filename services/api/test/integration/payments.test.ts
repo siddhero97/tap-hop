@@ -1,13 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
-import { prisma, OrderStatus, PayoutStatus } from '@tabhop/database';
+import { prisma, OrderStatus } from '@tabhop/database';
 import { createApp } from '../../src/app.js';
-import { PayPalGateway } from '../../src/payments/payments.gateway.js';
 import { SettlementService } from '../../src/settlements/settlements.service.js';
 import { FakePayPalGateway } from '../../src/payments/payments.fake-gateway.js';
 import { WebhookService } from '../../src/webhooks/webhooks.service.js';
-import { Decimal } from '@prisma/client';
-import { PayPalBatchStatus } from '../../src/payments/payments.model.js';
+import { Decimal } from '@prisma/client/runtime/library';
 import { markOrderFailed } from '../../src/payments/payments.service.js';
 
 // Create Express app for testing
@@ -17,7 +15,7 @@ function createTestApp() {
   // Setup test gateway and settlement service
   const gateway = new FakePayPalGateway();
   const settlementService = new SettlementService(gateway);
-  const webhookService = new WebhookService();
+  const webhookService = new WebhookService(prisma);
 
   app.locals.gateway = gateway;
   app.locals.settlementService = settlementService;
@@ -28,7 +26,7 @@ function createTestApp() {
 }
 
 describe('Payments Routes', () => {
-  let app: Express.Application;
+  let app: ReturnType<typeof createApp>;
   let testVenueId: string;
   let testOrderId: string;
   let gateway: FakePayPalGateway;

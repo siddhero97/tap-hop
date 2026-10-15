@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import { prisma } from '@tabhop/database';
 import { createApp } from '../../src/app.js';
@@ -6,7 +6,6 @@ import { WebhookService } from '../../src/webhooks/webhooks.service.js';
 import * as webhooksService from '../../src/webhooks/webhooks.service.js';
 import { FakePayPalGateway } from '../../src/payments/payments.fake-gateway.js';
 import { SettlementService } from '../../src/settlements/settlements.service.js';
-import { Decimal } from '@prisma/client';
 
 // Create Express app for testing
 function createTestApp() {
@@ -25,21 +24,19 @@ function createTestApp() {
 }
 
 describe('Webhooks Routes', () => {
-  let app: Express.Application;
-  let testVenueId: string;
+  let app: ReturnType<typeof createApp>;
 
   beforeEach(async () => {
     app = createTestApp();
 
     // Create test venue
-    const venue = await prisma.merchant.create({
+    await prisma.merchant.create({
       data: {
         businessName: 'Test Venue',
         merchantType: 'PRIMARY_VENUE',
         paypalEmail: 'venue@example.com',
       },
     });
-    testVenueId = venue.id;
   });
 
   describe('POST /webhooks/paypal', () => {

@@ -37,6 +37,7 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @tabhop/database exec prisma generate
       - run: pnpm typecheck
 
   test:
@@ -52,6 +53,7 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @tabhop/database exec prisma generate
       - run: pnpm test
 
   integration:
@@ -101,4 +103,5 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @tabhop/database exec prisma generate
       - run: pnpm build

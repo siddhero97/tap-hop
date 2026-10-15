@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import { prisma, OrderStatus } from '@tabhop/database';
 import { createApp } from '../../src/app.js';
 import { FakePayPalGateway } from '../../src/payments/payments.fake-gateway.js';
 import { SettlementService } from '../../src/settlements/settlements.service.js';
 import { WebhookService } from '../../src/webhooks/webhooks.service.js';
-import { Decimal } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 import * as ordersService from '../../src/orders/orders.service.js';
 
 // Create Express app for testing
@@ -14,7 +14,7 @@ function createTestApp() {
 
   const gateway = new FakePayPalGateway();
   const settlementService = new SettlementService(gateway);
-  const webhookService = new WebhookService();
+  const webhookService = new WebhookService(prisma);
 
   app.locals.gateway = gateway;
   app.locals.settlementService = settlementService;
@@ -25,7 +25,7 @@ function createTestApp() {
 }
 
 describe('Orders Routes', () => {
-  let app: Express.Application;
+  let app: ReturnType<typeof createApp>;
   let testVenueId: string;
   let testItemId: string;
   let testStaffId: string;

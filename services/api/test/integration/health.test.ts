@@ -16,7 +16,7 @@ function createTestApp(paypalMode = 'sandbox') {
 
   const gateway = new FakePayPalGateway();
   const settlementService = new SettlementService(gateway);
-  const webhookService = new WebhookService();
+  const webhookService = new WebhookService(prisma);
 
   registerServices(app, {
     gateway,

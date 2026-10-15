@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import { prisma, MerchantType } from '@tabhop/database';
 import { createApp } from '../../src/app.js';
-import { Decimal } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 import { catalogService } from '../../src/catalog/catalog.service.js';
 import { ServiceError } from '../../src/lib/service-error.js';
 

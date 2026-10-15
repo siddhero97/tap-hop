@@ -21,7 +21,7 @@ export class CatalogService {
   /**
    * Get all active menu items from external partners (EXTERNAL_PARTNER).
    */
-  async getPartnerItems(venueId: string): Promise<{ partnerItems: Item[] }> {
+  async getPartnerItems(_venueId: string): Promise<{ partnerItems: Item[] }> {
     const partnerItems = await prisma.item.findMany({
       where: {
         isActive: true,

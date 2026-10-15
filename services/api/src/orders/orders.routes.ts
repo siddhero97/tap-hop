@@ -3,7 +3,7 @@ import { validateMiddleware } from '../middleware/validate.js';
 import { createOrder, getOrder } from './orders.controller.js';
 import { CreateOrderSchema, OrderIdParamsSchema } from './orders.validator.js';
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * POST /orders - Create a new order

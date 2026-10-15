@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import { prisma, PayoutStatus } from '@tabhop/database';
 import { createApp } from '../../src/app.js';
 import { SettlementService } from '../../src/settlements/settlements.service.js';
 import { FakePayPalGateway } from '../../src/payments/payments.fake-gateway.js';
 import { WebhookService } from '../../src/webhooks/webhooks.service.js';
-import { Decimal } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 
 // Create Express app for testing
 function createTestApp() {
@@ -13,7 +13,7 @@ function createTestApp() {
 
   const gateway = new FakePayPalGateway();
   const settlementService = new SettlementService(gateway);
-  const webhookService = new WebhookService();
+  const webhookService = new WebhookService(prisma);
 
   app.locals.gateway = gateway;
   app.locals.settlementService = settlementService;
@@ -24,7 +24,7 @@ function createTestApp() {
 }
 
 describe('Settlements Routes', () => {
-  let app: Express.Application;
+  let app: ReturnType<typeof createApp>;
   let testVenueId: string;
 
   beforeEach(async () => {
@@ -69,7 +69,7 @@ describe('Settlements Routes', () => {
         data: { orderId: order.id, itemId: item.id, quantity: 1, unitPrice: new Decimal('100.00') },
       });
 
-      const batch = await prisma.payoutBatch.create({
+      await prisma.payoutBatch.create({
         data: {
           orderId: order.id,
           status: PayoutStatus.FAILED,
@@ -180,7 +180,7 @@ describe('Settlements Routes', () => {
         },
       });
 
-      const batch = await prisma.payoutBatch.create({
+      await prisma.payoutBatch.create({
         data: {
           orderId: order.id,
           status: PayoutStatus.PROCESSING,

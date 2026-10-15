@@ -3,7 +3,7 @@ import { validateMiddleware } from '../middleware/validate.js';
 import { OrderIdParamsSchema } from './payments.validator.js';
 import { createPayPalOrder, capturePayPalOrder } from './payments.controller.js';
 
-const router = Router({ mergeParams: true });
+const router: Router = Router({ mergeParams: true });
 
 /**
  * POST /orders/:id/paypal - Create a PayPal order for payment

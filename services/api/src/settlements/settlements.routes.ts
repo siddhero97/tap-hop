@@ -3,7 +3,7 @@ import { validateMiddleware } from '../middleware/validate.js';
 import { GetSettlementsSchema, SettlementOrderParamsSchema } from './settlements.validator.js';
 import { retrySettlement, getSettlements } from './settlements.controller.js';
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * POST /settlements/:orderId/retry - Retry a failed settlement batch

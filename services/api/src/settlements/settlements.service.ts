@@ -110,7 +110,7 @@ export class SettlementService {
     // Create batch in transaction and dispatch to gateway
     let batch: PayoutBatch | undefined;
     try {
-      batch = await prisma.$transaction(async (tx: any) => {
+      const createdBatch: PayoutBatch = await prisma.$transaction(async (tx: any) => {
         // PayoutBatch.orderId is unique: a retry reuses the FAILED batch and replaces its items
         const existingBatch = order.payoutBatch;
         let newBatch;
@@ -153,13 +153,14 @@ export class SettlementService {
 
         return newBatch;
       });
+      batch = createdBatch;
 
       // Call gateway
       const response = await this.gateway.createPayoutBatch(payoutRequest);
 
       // Update batch with response
       await prisma.payoutBatch.update({
-        where: { id: batch.id },
+        where: { id: createdBatch.id },
         data: {
           paypalBatchId: response.paypalBatchId,
           status: this.mapPayPalBatchStatusToPayoutStatus(response.status),
@@ -168,7 +169,7 @@ export class SettlementService {
       });
 
       return {
-        payoutBatchId: batch.id,
+        payoutBatchId: createdBatch.id,
         status: response.status,
       };
     } catch (error) {

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { getHealth } from './health.controller.js';
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * GET /health - Health check endpoint
