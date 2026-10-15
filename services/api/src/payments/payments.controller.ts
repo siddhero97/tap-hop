@@ -72,54 +72,42 @@ export async function createPayPalOrder(req: Request, res: Response): Promise<vo
       return;
     }
 
-    try {
-      // Create PayPal order
-      const paypalResult = await paypalGateway.createOrder({
-        referenceId: orderId,
-        amountCents: Math.round(parseFloat(order.totalAmount.toString()) * 100),
-        currency: order.currency,
-      });
+    // Create PayPal order
+    const paypalResult = await paypalGateway.createOrder({
+      referenceId: orderId,
+      amountCents: Math.round(parseFloat(order.totalAmount.toString()) * 100),
+      currency: order.currency,
+    });
 
-      // Store paypalOrderId in database
-      await prisma.order.update({
-        where: { id: orderId },
-        data: {
-          paypalOrderId: paypalResult.paypalOrderId,
-          status: OrderStatus.AUTHORIZED,
-        },
-      });
-
-      logger.info(
-        { orderId, paypalOrderId: paypalResult.paypalOrderId },
-        'PayPal order created'
-      );
-
-      res.status(201).json({
-        status: 'success',
+    // Store paypalOrderId in database
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
         paypalOrderId: paypalResult.paypalOrderId,
-        approveUrl: paypalResult.approveUrl,
-      });
-    } catch (gatewayError) {
-      logger.error(
-        { error: String(gatewayError), orderId },
-        'Failed to create PayPal order'
-      );
-      res.status(400).json({
-        status: 'error',
-        code: 'PAYMENT_GATEWAY_ERROR',
-        message: 'Failed to create PayPal order',
-        details: (gatewayError as Error).message,
-      });
-    }
+        status: OrderStatus.AUTHORIZED,
+      },
+    });
+
+    logger.info(
+      { orderId, paypalOrderId: paypalResult.paypalOrderId },
+      'PayPal order created'
+    );
+
+    res.status(201).json({
+      status: 'success',
+      paypalOrderId: paypalResult.paypalOrderId,
+      approveUrl: paypalResult.approveUrl,
+    });
   } catch (error) {
     logger.error(
       { error: String(error), orderId: req.params.id },
       'Error creating PayPal order'
     );
-    res.status(500).json({
+    res.status(400).json({
       status: 'error',
-      code: 'INTERNAL_ERROR',
+      code: 'PAYMENT_GATEWAY_ERROR',
       message: 'Failed to create PayPal order',
+      details: (error as Error).message,
     });
   }
 }
@@ -198,86 +186,78 @@ export async function capturePayPalOrder(req: Request, res: Response): Promise<v
       return;
     }
 
-    try {
-      // Capture PayPal order
-      const captureResult = await paypalGateway.captureOrder(order.paypalOrderId);
+    // Capture PayPal order
+    const captureResult = await paypalGateway.captureOrder(order.paypalOrderId);
 
-      // Update order with capture details
-      const updatedOrder = await prisma.order.update({
-        where: { id: orderId },
-        data: {
-          paypalCaptureId: captureResult.captureId,
-          status: OrderStatus.CAPTURED,
-          capturedAt: new Date(),
+    // Update order with capture details
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        paypalCaptureId: captureResult.captureId,
+        status: OrderStatus.CAPTURED,
+        capturedAt: new Date(),
+      },
+    });
+
+    logger.info(
+      { orderId, paypalCaptureId: captureResult.captureId },
+      'PayPal order captured'
+    );
+
+    // Attempt settlement dispatch (may fail but capture succeeds)
+    try {
+      const settlementResult = await service.dispatch(orderId);
+
+      res.status(200).json({
+        status: 'success',
+        order: {
+          id: updatedOrder.id,
+          status: updatedOrder.status,
+          paypalCaptureId: updatedOrder.paypalCaptureId,
+        },
+        payoutBatch: {
+          id: settlementResult.payoutBatchId,
+          status: settlementResult.status,
         },
       });
-
-      logger.info(
-        { orderId, paypalCaptureId: captureResult.captureId },
-        'PayPal order captured'
-      );
-
-      try {
-        // Dispatch settlement
-        const settlementResult = await service.dispatch(orderId);
-
-        res.status(200).json({
-          status: 'success',
-          order: {
-            id: updatedOrder.id,
-            status: updatedOrder.status,
-            paypalCaptureId: updatedOrder.paypalCaptureId,
-          },
-          payoutBatch: {
-            id: settlementResult.payoutBatchId,
-            status: settlementResult.status,
-          },
-        });
-      } catch (settlementError) {
-        // Capture succeeded but settlement dispatch failed
-        logger.error(
-          { error: String(settlementError), orderId },
-          'Settlement dispatch failed, but capture succeeded'
-        );
-
-        res.status(200).json({
-          status: 'success',
-          order: {
-            id: updatedOrder.id,
-            status: updatedOrder.status,
-            paypalCaptureId: updatedOrder.paypalCaptureId,
-          },
-          settlementError: (settlementError as Error).message,
-        });
-      }
-    } catch (captureError) {
-      // Update order status to FAILED
-      await prisma.order.update({
-        where: { id: orderId },
-        data: { status: OrderStatus.FAILED },
-      });
-
+    } catch (settlementError) {
+      // Capture succeeded but settlement dispatch failed
       logger.error(
-        { error: String(captureError), orderId },
-        'Failed to capture PayPal order'
+        { error: String(settlementError), orderId },
+        'Settlement dispatch failed, but capture succeeded'
       );
 
-      res.status(400).json({
-        status: 'error',
-        code: 'PAYMENT_CAPTURE_FAILED',
-        message: 'Failed to capture PayPal order',
-        details: (captureError as Error).message,
+      res.status(200).json({
+        status: 'success',
+        order: {
+          id: updatedOrder.id,
+          status: updatedOrder.status,
+          paypalCaptureId: updatedOrder.paypalCaptureId,
+        },
+        settlementError: (settlementError as Error).message,
       });
     }
   } catch (error) {
+    // Capture or other failure - mark order as FAILED and return error
+    try {
+      await prisma.order.update({
+        where: { id: req.params.id },
+        data: { status: OrderStatus.FAILED },
+      });
+    } catch (updateError) {
+      logger.error({ error: String(updateError) }, 'Failed to mark order as FAILED');
+    }
+
     logger.error(
       { error: String(error), orderId: req.params.id },
       'Error capturing PayPal order'
     );
-    res.status(500).json({
+
+    res.status(400).json({
       status: 'error',
-      code: 'INTERNAL_ERROR',
+      code: 'PAYMENT_CAPTURE_FAILED',
       message: 'Failed to capture PayPal order',
+      details: (error as Error).message,
     });
   }
 }
