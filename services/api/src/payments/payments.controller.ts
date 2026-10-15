@@ -7,6 +7,52 @@ import { logger } from '../lib/logger.js';
 import { OrderIdSchema } from './payments.validator.js';
 
 /**
+ * Attempt settlement dispatch after capture succeeds
+ * Returns success response with settlement result, or success with error if settlement fails
+ */
+async function attemptSettlementDispatch(
+  service: SettlementService,
+  orderId: string,
+  updatedOrder: any
+): Promise<any> {
+  try {
+    const settlementResult = await service.dispatch(orderId);
+    return {
+      status: 200,
+      body: {
+        status: 'success',
+        order: {
+          id: updatedOrder.id,
+          status: updatedOrder.status,
+          paypalCaptureId: updatedOrder.paypalCaptureId,
+        },
+        payoutBatch: {
+          id: settlementResult.payoutBatchId,
+          status: settlementResult.status,
+        },
+      },
+    };
+  } catch (settlementError) {
+    logger.error(
+      { error: String(settlementError), orderId },
+      'Settlement dispatch failed, but capture succeeded'
+    );
+    return {
+      status: 200,
+      body: {
+        status: 'success',
+        order: {
+          id: updatedOrder.id,
+          status: updatedOrder.status,
+          paypalCaptureId: updatedOrder.paypalCaptureId,
+        },
+        settlementError: (settlementError as Error).message,
+      },
+    };
+  }
+}
+
+/**
  * POST /orders/:id/paypal - Create a PayPal order for payment
  * Returns paypalOrderId and approveUrl for the patron
  */
@@ -205,38 +251,8 @@ export async function capturePayPalOrder(req: Request, res: Response): Promise<v
     );
 
     // Attempt settlement dispatch (may fail but capture succeeds)
-    try {
-      const settlementResult = await service.dispatch(orderId);
-
-      res.status(200).json({
-        status: 'success',
-        order: {
-          id: updatedOrder.id,
-          status: updatedOrder.status,
-          paypalCaptureId: updatedOrder.paypalCaptureId,
-        },
-        payoutBatch: {
-          id: settlementResult.payoutBatchId,
-          status: settlementResult.status,
-        },
-      });
-    } catch (settlementError) {
-      // Capture succeeded but settlement dispatch failed
-      logger.error(
-        { error: String(settlementError), orderId },
-        'Settlement dispatch failed, but capture succeeded'
-      );
-
-      res.status(200).json({
-        status: 'success',
-        order: {
-          id: updatedOrder.id,
-          status: updatedOrder.status,
-          paypalCaptureId: updatedOrder.paypalCaptureId,
-        },
-        settlementError: (settlementError as Error).message,
-      });
-    }
+    const settlementResponse = await attemptSettlementDispatch(service, orderId, updatedOrder);
+    res.status(settlementResponse.status).json(settlementResponse.body);
   } catch (error) {
     // Capture or other failure - mark order as FAILED and return error
     try {
