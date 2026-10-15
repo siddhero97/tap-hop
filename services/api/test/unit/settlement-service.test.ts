@@ -1,29 +1,23 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { SettlementService } from '../../src/modules/settlements/service';
-import { FakePayPalGateway } from '../../src/modules/payments/fake-gateway';
-import { PayPalBatchStatus } from '../../src/modules/payments/constants';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { OrderStatus } from '../../src/modules/orders/types';
+import { PayPalBatchStatus } from '../../src/modules/payments/constants';
+import { FakePayPalGateway } from '../../src/modules/payments/fake-gateway';
 
-/**
- * Mock Prisma client for SettlementService tests
- */
-const mockPrisma = {
-  order: {
-    findUnique: vi.fn(),
-  },
-  payoutBatch: {
-    create: vi.fn(),
-    update: vi.fn(),
-  },
-  payoutBatchItem: {
-    createMany: vi.fn(),
-  },
-  $transaction: vi.fn(),
-};
-
-// Mock the database module
+// Set up mock BEFORE importing SettlementService
 vi.mock('@tabhop/database', () => ({
-  prisma: mockPrisma,
+  prisma: {
+    order: {
+      findUnique: vi.fn(),
+    },
+    payoutBatch: {
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+    payoutBatchItem: {
+      createMany: vi.fn(),
+    },
+    $transaction: vi.fn(),
+  },
   PayoutStatus: {
     QUEUED: 'QUEUED',
     PROCESSING: 'PROCESSING',
@@ -31,6 +25,20 @@ vi.mock('@tabhop/database', () => ({
     FAILED: 'FAILED',
   },
 }));
+
+// Now import SettlementService after mock is set up
+import { SettlementService } from '../../src/modules/settlements/service';
+import { prisma } from '@tabhop/database';
+
+/**
+ * Helper to create a mock Decimal that behaves like Prisma Decimal
+ */
+function mockDecimal(value: string): any {
+  return {
+    toString: () => value,
+    toFixed: (places: number) => parseFloat(value).toFixed(places),
+  };
+}
 
 describe('SettlementService', () => {
   let service: SettlementService;
@@ -43,22 +51,38 @@ describe('SettlementService', () => {
     gateway.reset();
   });
 
+  afterEach(() => {
+    vi.clearAllMocks();
+    // Reset all mock call history
+    if (vi.mocked(prisma.order.findUnique)) {
+      vi.mocked(prisma.order.findUnique).mockClear();
+    }
+    if (vi.mocked(prisma.$transaction)) {
+      vi.mocked(prisma.$transaction).mockClear();
+    }
+    if (vi.mocked(prisma.payoutBatch.update)) {
+      vi.mocked(prisma.payoutBatch.update).mockClear();
+    }
+    if (vi.mocked(prisma.payoutBatchItem.createMany)) {
+      vi.mocked(prisma.payoutBatchItem.createMany).mockClear();
+    }
+  });
+
   describe('Happy path: order captured, batch created, PayPal success', () => {
     it('creates payout batch and dispatches to PayPal', async () => {
       const orderId = 'order-1';
       const batchId = 'batch-1';
 
-      // Mock order data
       const mockOrder = {
         id: orderId,
         venueId: 'venue-1',
         serverStaffId: 'staff-1',
         status: OrderStatus.CAPTURED,
-        subtotalAmount: { toString: () => '100.00' },
-        taxAmount: { toString: () => '8.00' },
-        tipAmount: { toString: () => '5.00' },
-        platformFeeAmount: { toString: () => '3.00' },
-        totalAmount: { toString: () => '116.00' },
+        subtotalAmount: mockDecimal('100.00'),
+        taxAmount: mockDecimal('8.00'),
+        tipAmount: mockDecimal('5.00'),
+        platformFeeAmount: mockDecimal('3.00'),
+        totalAmount: mockDecimal('116.00'),
         venue: { paypalEmail: 'venue@example.com' },
         serverStaff: { paypalEmail: 'staff@example.com' },
         items: [
@@ -67,11 +91,11 @@ describe('SettlementService', () => {
               merchantId: 'venue-1',
               merchant: {
                 paypalEmail: 'venue@example.com',
-                commissionRate: { toString: () => '0' },
+                commissionRate: mockDecimal('0.15'),
                 merchantType: 'PRIMARY_VENUE',
               },
             },
-            unitPrice: { toString: () => '50.00' },
+            unitPrice: mockDecimal('50.00'),
             quantity: 1,
           },
           {
@@ -79,11 +103,11 @@ describe('SettlementService', () => {
               merchantId: 'venue-1',
               merchant: {
                 paypalEmail: 'venue@example.com',
-                commissionRate: { toString: () => '0' },
+                commissionRate: mockDecimal('0.15'),
                 merchantType: 'PRIMARY_VENUE',
               },
             },
-            unitPrice: { toString: () => '50.00' },
+            unitPrice: mockDecimal('50.00'),
             quantity: 1,
           },
         ],
@@ -100,20 +124,19 @@ describe('SettlementService', () => {
         dispatchedAt: null,
       };
 
-      // Mock transaction to create batch
-      mockPrisma.$transaction.mockResolvedValueOnce(mockBatch);
-      mockPrisma.order.findUnique.mockResolvedValueOnce(mockOrder);
-      mockPrisma.payoutBatch.update.mockResolvedValueOnce({
+      vi.mocked(prisma.$transaction).mockResolvedValueOnce(mockBatch as any);
+      vi.mocked(prisma.order.findUnique).mockResolvedValueOnce(mockOrder as any);
+      vi.mocked(prisma.payoutBatch.update).mockResolvedValueOnce({
         ...mockBatch,
         paypalBatchId: 'FAKE-BATCH-1',
         dispatchedAt: new Date(),
-      });
+      } as any);
 
       const result = await service.dispatch(orderId);
 
       expect(result.payoutBatchId).toBe(batchId);
       expect(result.status).toBe(PayPalBatchStatus.PROCESSING);
-      expect(mockPrisma.order.findUnique).toHaveBeenCalledWith({
+      expect(vi.mocked(prisma.order.findUnique)).toHaveBeenCalledWith({
         where: { id: orderId },
         include: {
           venue: true,
@@ -130,7 +153,7 @@ describe('SettlementService', () => {
           payoutBatch: true,
         },
       });
-      expect(mockPrisma.$transaction).toHaveBeenCalled();
+      expect(vi.mocked(prisma.$transaction)).toHaveBeenCalled();
     });
   });
 
@@ -144,18 +167,31 @@ describe('SettlementService', () => {
         venueId: 'venue-1',
         serverStaffId: null,
         status: OrderStatus.CAPTURED,
-        subtotalAmount: { toString: () => '50.00' },
-        taxAmount: { toString: () => '4.00' },
-        tipAmount: { toString: () => '0.00' },
-        platformFeeAmount: { toString: () => '1.50' },
-        totalAmount: { toString: () => '55.50' },
+        subtotalAmount: mockDecimal('50.00'),
+        taxAmount: mockDecimal('4.00'),
+        tipAmount: mockDecimal('0.00'),
+        platformFeeAmount: mockDecimal('1.50'),
+        totalAmount: mockDecimal('55.50'),
         venue: { paypalEmail: 'venue@example.com' },
         serverStaff: null,
-        items: [],
+        items: [
+          {
+            item: {
+              merchantId: 'venue-1',
+              merchant: {
+                paypalEmail: 'venue@example.com',
+                commissionRate: mockDecimal('0.15'),
+                merchantType: 'PRIMARY_VENUE',
+              },
+            },
+            unitPrice: mockDecimal('50.00'),
+            quantity: 1,
+          },
+        ],
         payoutBatch: {
           id: batchId,
           orderId,
-          status: 'PROCESSING', // Not FAILED
+          status: 'PROCESSING',
           attempts: 1,
           paypalBatchId: 'FAKE-BATCH-1',
           lastError: null,
@@ -163,12 +199,12 @@ describe('SettlementService', () => {
         },
       };
 
-      mockPrisma.order.findUnique.mockResolvedValueOnce(mockOrder);
+      vi.mocked(prisma.order.findUnique).mockResolvedValueOnce(mockOrder as any);
 
       const result = await service.dispatch(orderId);
 
       expect(result.payoutBatchId).toBe(batchId);
-      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+      expect(vi.mocked(prisma.$transaction)).not.toHaveBeenCalled();
       expect(gateway.getCalls().length).toBe(0);
     });
   });
@@ -182,24 +218,24 @@ describe('SettlementService', () => {
         venueId: 'venue-1',
         serverStaffId: null,
         status: OrderStatus.PENDING,
-        subtotalAmount: { toString: () => '50.00' },
-        taxAmount: { toString: () => '4.00' },
-        tipAmount: { toString: () => '0.00' },
-        platformFeeAmount: { toString: () => '1.50' },
-        totalAmount: { toString: () => '55.50' },
+        subtotalAmount: mockDecimal('50.00'),
+        taxAmount: mockDecimal('4.00'),
+        tipAmount: mockDecimal('0.00'),
+        platformFeeAmount: mockDecimal('1.50'),
+        totalAmount: mockDecimal('55.50'),
         venue: { paypalEmail: 'venue@example.com' },
         serverStaff: null,
         items: [],
         payoutBatch: null,
       };
 
-      mockPrisma.order.findUnique.mockResolvedValueOnce(mockOrder);
+      vi.mocked(prisma.order.findUnique).mockResolvedValueOnce(mockOrder as any);
 
       await expect(service.dispatch(orderId)).rejects.toThrow(
         'Order must be CAPTURED to dispatch settlement'
       );
 
-      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+      expect(vi.mocked(prisma.$transaction)).not.toHaveBeenCalled();
     });
   });
 
@@ -213,14 +249,27 @@ describe('SettlementService', () => {
         venueId: 'venue-1',
         serverStaffId: null,
         status: OrderStatus.CAPTURED,
-        subtotalAmount: { toString: () => '50.00' },
-        taxAmount: { toString: () => '4.00' },
-        tipAmount: { toString: () => '0.00' },
-        platformFeeAmount: { toString: () => '1.50' },
-        totalAmount: { toString: () => '55.50' },
+        subtotalAmount: mockDecimal('50.00'),
+        taxAmount: mockDecimal('4.00'),
+        tipAmount: mockDecimal('0.00'),
+        platformFeeAmount: mockDecimal('1.50'),
+        totalAmount: mockDecimal('55.50'),
         venue: { paypalEmail: 'venue@example.com' },
         serverStaff: null,
-        items: [],
+        items: [
+          {
+            item: {
+              merchantId: 'venue-1',
+              merchant: {
+                paypalEmail: 'venue@example.com',
+                commissionRate: mockDecimal('0.15'),
+                merchantType: 'PRIMARY_VENUE',
+              },
+            },
+            unitPrice: mockDecimal('50.00'),
+            quantity: 1,
+          },
+        ],
         payoutBatch: null,
       };
 
@@ -234,24 +283,22 @@ describe('SettlementService', () => {
         dispatchedAt: null,
       };
 
-      mockPrisma.order.findUnique.mockResolvedValueOnce(mockOrder);
-      mockPrisma.$transaction.mockResolvedValueOnce(mockBatch);
+      vi.mocked(prisma.order.findUnique).mockResolvedValueOnce(mockOrder as any);
+      vi.mocked(prisma.$transaction).mockResolvedValueOnce(mockBatch as any);
 
-      // Make gateway fail
       gateway.failNext('createPayoutBatch');
 
-      mockPrisma.payoutBatch.update.mockResolvedValueOnce({
+      vi.mocked(prisma.payoutBatch.update).mockResolvedValueOnce({
         ...mockBatch,
         status: 'FAILED',
         lastError: 'Simulated PayPal error: batch creation failed',
-      });
+      } as any);
 
       await expect(service.dispatch(orderId)).rejects.toThrow(
         'Simulated PayPal error: batch creation failed'
       );
 
-      // Verify that FAILED status was stored
-      expect(mockPrisma.payoutBatch.update).toHaveBeenCalledWith({
+      expect(vi.mocked(prisma.payoutBatch.update)).toHaveBeenCalledWith({
         where: { id: batchId },
         data: {
           status: 'FAILED',
@@ -270,21 +317,32 @@ describe('SettlementService', () => {
         venueId: 'venue-1',
         serverStaffId: null,
         status: OrderStatus.CAPTURED,
-        subtotalAmount: { toString: () => '50.00' },
-        taxAmount: { toString: () => '4.00' },
-        tipAmount: { toString: () => '0.00' },
-        platformFeeAmount: { toString: () => '1.50' },
-        totalAmount: { toString: () => '55.50' },
+        subtotalAmount: mockDecimal('50.00'),
+        taxAmount: mockDecimal('4.00'),
+        tipAmount: mockDecimal('0.00'),
+        platformFeeAmount: mockDecimal('1.50'),
+        totalAmount: mockDecimal('55.50'),
         venue: { paypalEmail: 'venue@example.com' },
         serverStaff: null,
-        items: [],
+        items: [
+          {
+            item: {
+              merchantId: 'venue-1',
+              merchant: {
+                paypalEmail: 'venue@example.com',
+                commissionRate: mockDecimal('0.15'),
+                merchantType: 'PRIMARY_VENUE',
+              },
+            },
+            unitPrice: mockDecimal('50.00'),
+            quantity: 1,
+          },
+        ],
         payoutBatch: null,
       };
 
-      mockPrisma.order.findUnique.mockResolvedValueOnce(mockOrder);
-
-      // Make transaction fail
-      mockPrisma.$transaction.mockRejectedValueOnce(
+      vi.mocked(prisma.order.findUnique).mockResolvedValueOnce(mockOrder as any);
+      vi.mocked(prisma.$transaction).mockRejectedValueOnce(
         new Error('Database constraint violation')
       );
 
@@ -298,7 +356,7 @@ describe('SettlementService', () => {
     it('throws when order does not exist', async () => {
       const orderId = 'order-nonexistent';
 
-      mockPrisma.order.findUnique.mockResolvedValueOnce(null);
+      vi.mocked(prisma.order.findUnique).mockResolvedValueOnce(null);
 
       await expect(service.dispatch(orderId)).rejects.toThrow(
         `Order not found: ${orderId}`
@@ -317,18 +375,31 @@ describe('SettlementService', () => {
         venueId: 'venue-1',
         serverStaffId: null,
         status: OrderStatus.CAPTURED,
-        subtotalAmount: { toString: () => '50.00' },
-        taxAmount: { toString: () => '4.00' },
-        tipAmount: { toString: () => '0.00' },
-        platformFeeAmount: { toString: () => '1.50' },
-        totalAmount: { toString: () => '55.50' },
+        subtotalAmount: mockDecimal('50.00'),
+        taxAmount: mockDecimal('4.00'),
+        tipAmount: mockDecimal('0.00'),
+        platformFeeAmount: mockDecimal('1.50'),
+        totalAmount: mockDecimal('55.50'),
         venue: { paypalEmail: 'venue@example.com' },
         serverStaff: null,
-        items: [],
+        items: [
+          {
+            item: {
+              merchantId: 'venue-1',
+              merchant: {
+                paypalEmail: 'venue@example.com',
+                commissionRate: mockDecimal('0.15'),
+                merchantType: 'PRIMARY_VENUE',
+              },
+            },
+            unitPrice: mockDecimal('50.00'),
+            quantity: 1,
+          },
+        ],
         payoutBatch: {
           id: oldBatchId,
           orderId,
-          status: 'FAILED', // Previously failed
+          status: 'FAILED',
           attempts: 1,
           paypalBatchId: null,
           lastError: 'Previous error',
@@ -340,24 +411,24 @@ describe('SettlementService', () => {
         id: newBatchId,
         orderId,
         status: 'PROCESSING',
-        attempts: 2, // Incremented attempts
+        attempts: 2,
         paypalBatchId: null,
         lastError: null,
         dispatchedAt: null,
       };
 
-      mockPrisma.order.findUnique.mockResolvedValueOnce(mockOrder);
-      mockPrisma.$transaction.mockResolvedValueOnce(mockNewBatch);
-      mockPrisma.payoutBatch.update.mockResolvedValueOnce({
+      vi.mocked(prisma.order.findUnique).mockResolvedValueOnce(mockOrder as any);
+      vi.mocked(prisma.$transaction).mockResolvedValueOnce(mockNewBatch as any);
+      vi.mocked(prisma.payoutBatch.update).mockResolvedValueOnce({
         ...mockNewBatch,
         paypalBatchId: 'FAKE-BATCH-2',
         dispatchedAt: new Date(),
-      });
+      } as any);
 
       const result = await service.dispatch(orderId);
 
       expect(result.payoutBatchId).toBe(newBatchId);
-      expect(mockPrisma.$transaction).toHaveBeenCalled();
+      expect(vi.mocked(prisma.$transaction)).toHaveBeenCalled();
     });
   });
 
@@ -371,11 +442,11 @@ describe('SettlementService', () => {
         venueId: 'venue-1',
         serverStaffId: 'staff-1',
         status: OrderStatus.CAPTURED,
-        subtotalAmount: { toString: () => '100.00' },
-        taxAmount: { toString: () => '8.00' },
-        tipAmount: { toString: () => '10.00' },
-        platformFeeAmount: { toString: () => '3.00' },
-        totalAmount: { toString: () => '121.00' },
+        subtotalAmount: mockDecimal('100.00'),
+        taxAmount: mockDecimal('8.00'),
+        tipAmount: mockDecimal('10.00'),
+        platformFeeAmount: mockDecimal('3.00'),
+        totalAmount: mockDecimal('121.00'),
         venue: { paypalEmail: 'venue@example.com' },
         serverStaff: { paypalEmail: 'staff@example.com' },
         items: [
@@ -388,7 +459,7 @@ describe('SettlementService', () => {
                 merchantType: 'PRIMARY_VENUE',
               },
             },
-            unitPrice: { toString: () => '50.00' },
+            unitPrice: mockDecimal('50.00'),
             quantity: 1,
           },
           {
@@ -396,11 +467,11 @@ describe('SettlementService', () => {
               merchantId: 'partner-1',
               merchant: {
                 paypalEmail: 'partner@example.com',
-                commissionRate: { toString: () => '0.15' },
+                commissionRate: mockDecimal('0.15'),
                 merchantType: 'EXTERNAL_PARTNER',
               },
             },
-            unitPrice: { toString: () => '50.00' },
+            unitPrice: mockDecimal('50.00'),
             quantity: 1,
           },
         ],
@@ -417,22 +488,18 @@ describe('SettlementService', () => {
         dispatchedAt: null,
       };
 
-      mockPrisma.$transaction.mockResolvedValueOnce(mockBatch);
-      mockPrisma.order.findUnique.mockResolvedValueOnce(mockOrder);
-      mockPrisma.payoutBatch.update.mockResolvedValueOnce({
+      vi.mocked(prisma.$transaction).mockResolvedValueOnce(mockBatch as any);
+      vi.mocked(prisma.order.findUnique).mockResolvedValueOnce(mockOrder as any);
+      vi.mocked(prisma.payoutBatch.update).mockResolvedValueOnce({
         ...mockBatch,
         paypalBatchId: 'FAKE-BATCH-3',
         dispatchedAt: new Date(),
-      });
+      } as any);
 
       const result = await service.dispatch(orderId);
 
       expect(result.payoutBatchId).toBe(batchId);
-      expect(mockPrisma.$transaction).toHaveBeenCalled();
-
-      // Verify transaction was called with batch creation
-      const transactionCall = mockPrisma.$transaction.mock.calls[0];
-      expect(transactionCall).toBeDefined();
+      expect(vi.mocked(prisma.$transaction)).toHaveBeenCalled();
     });
   });
 });
