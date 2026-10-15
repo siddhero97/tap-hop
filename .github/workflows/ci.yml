@@ -54,6 +54,40 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
 
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tabhop_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tabhop_test
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tabhop_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @tabhop/database exec prisma generate
+      - run: pnpm --filter @tabhop/database exec prisma migrate deploy
+      - run: pnpm --filter @tabhop/api test:integration
+
   build:
     name: Build
     runs-on: ubuntu-latest
