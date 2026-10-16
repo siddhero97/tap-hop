@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Writable } from 'stream';
+import type { Email } from '../../src/lib/email.js';
 import type {
   parseStackFrame as ParseStackFrameFn,
   getCallerInfo as GetCallerInfoFn,
@@ -100,7 +101,7 @@ describe('Feature: Structured Logger with ISO-8601 Date-Time, Caller File/Functi
           };
         };
         patronUser: {
-          email: string;
+          email: Email;
           password: string;
           token: string;
         };

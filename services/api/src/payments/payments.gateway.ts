@@ -1,4 +1,5 @@
 import { PayPalCaptureStatus, PayPalBatchStatus } from './payments.model.js';
+import type { Email } from '../lib/email.js';
 
 /**
  * PayPal gateway interface for order creation, capture, and payouts.
@@ -50,7 +51,7 @@ export interface PayoutBatchRequest {
   items: Array<{
     recipient_type: 'EMAIL';
     amount: { value: string; currency: string };
-    receiver: string;
+    receiver: Email;
     note: string;
     sender_item_id: string;
   }>;

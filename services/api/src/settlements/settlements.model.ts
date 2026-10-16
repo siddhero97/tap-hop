@@ -5,6 +5,7 @@ import {
   PayoutStatus,
 } from '@tabhop/database';
 import { Decimal } from '@prisma/client/runtime/library';
+import type { Email } from '../lib/email.js';
 
 /**
  * Database record DTOs and view models for Settlements.
@@ -40,11 +41,11 @@ export interface SettlementOrderWithRelationsDto {
   totalAmount: Decimal;
   venue: {
     id: string;
-    paypalEmail: string;
+    paypalEmail: Email;
   };
   serverStaff: {
     id: string;
-    paypalEmail: string;
+    paypalEmail: Email;
   } | null;
   items: Array<{
     unitPrice: Decimal;
@@ -55,7 +56,7 @@ export interface SettlementOrderWithRelationsDto {
         id: string;
         merchantType: MerchantType;
         commissionRate: Decimal | { toString(): string };
-        paypalEmail: string;
+        paypalEmail: Email;
       };
     };
   }>;

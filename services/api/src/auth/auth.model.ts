@@ -1,4 +1,5 @@
 import { UserRole } from '@tabhop/database';
+import type { Email } from '../lib/email.js';
 
 /**
  * Database record DTOs and view models for Authentication & RBAC.
@@ -6,7 +7,7 @@ import { UserRole } from '@tabhop/database';
 
 export interface AuthenticatedUser {
   id: string;
-  email: string;
+  email: Email;
   displayName: string;
   role: UserRole;
   isActive: boolean;
@@ -16,7 +17,7 @@ export interface AuthenticatedUser {
 
 export interface UserRecordDto {
   id: string;
-  email: string;
+  email: Email;
   passwordHash: string;
   displayName: string;
   role: UserRole;

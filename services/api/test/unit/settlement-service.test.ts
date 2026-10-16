@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { OrderStatus } from '../../src/orders/orders.model';
 import { PayPalBatchStatus } from '../../src/payments/payments.model';
 import { FakePayPalGateway } from '../../src/payments/payments.fake-gateway';
+import type { Email } from '../../src/lib/email';
 
 // Set up mock BEFORE importing SettlementService
 vi.mock('@tabhop/database', () => ({
@@ -82,7 +83,7 @@ describe('SettlementService', () => {
       const orderId: string = 'order-1';
       const batchId: string = 'batch-1';
 
-      const mockOrder: { id: string; venueId: string; serverStaffId: string; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: string; }; serverStaff: { paypalEmail: string; }; items: { item: { merchantId: string; merchant: { paypalEmail: string; commissionRate: MockDecimalLike; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; }[]; payoutBatch: null; } = {
+      const mockOrder: { id: string; venueId: string; serverStaffId: string; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: Email; }; serverStaff: { paypalEmail: Email; }; items: { item: { merchantId: string; merchant: { paypalEmail: Email; commissionRate: MockDecimalLike; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; }[]; payoutBatch: null; } = {
         id: orderId,
         venueId: 'venue-1',
         serverStaffId: 'staff-1',
@@ -171,7 +172,7 @@ describe('SettlementService', () => {
       const orderId: string = 'order-2';
       const batchId: string = 'batch-2';
 
-      const mockOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: string; }; serverStaff: null; items: { item: { merchantId: string; merchant: { paypalEmail: string; commissionRate: MockDecimalLike; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; }[]; payoutBatch: { id: string; orderId: string; status: string; attempts: number; paypalBatchId: string; lastError: null; dispatchedAt: Date; }; } = {
+      const mockOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: Email; }; serverStaff: null; items: { item: { merchantId: string; merchant: { paypalEmail: Email; commissionRate: MockDecimalLike; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; }[]; payoutBatch: { id: string; orderId: string; status: string; attempts: number; paypalBatchId: string; lastError: null; dispatchedAt: Date; }; } = {
         id: orderId,
         venueId: 'venue-1',
         serverStaffId: null,
@@ -222,7 +223,7 @@ describe('SettlementService', () => {
     it('throws when order status is not CAPTURED', async () => {
       const orderId: string = 'order-3';
 
-      const mockOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: string; }; serverStaff: null; items: never[]; payoutBatch: null; } = {
+      const mockOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: Email; }; serverStaff: null; items: never[]; payoutBatch: null; } = {
         id: orderId,
         venueId: 'venue-1',
         serverStaffId: null,
@@ -253,7 +254,7 @@ describe('SettlementService', () => {
       const orderId: string = 'order-4';
       const batchId: string = 'batch-4';
 
-      const mockOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: string; }; serverStaff: null; items: { item: { merchantId: string; merchant: { paypalEmail: string; commissionRate: MockDecimalLike; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; }[]; payoutBatch: null; } = {
+      const mockOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: Email; }; serverStaff: null; items: { item: { merchantId: string; merchant: { paypalEmail: Email; commissionRate: MockDecimalLike; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; }[]; payoutBatch: null; } = {
         id: orderId,
         venueId: 'venue-1',
         serverStaffId: null,
@@ -321,7 +322,7 @@ describe('SettlementService', () => {
     it('rolls back transaction when batch creation fails', async () => {
       const orderId: string = 'order-5';
 
-      const mockOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: string; }; serverStaff: null; items: { item: { merchantId: string; merchant: { paypalEmail: string; commissionRate: MockDecimalLike; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; }[]; payoutBatch: null; } = {
+      const mockOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: Email; }; serverStaff: null; items: { item: { merchantId: string; merchant: { paypalEmail: Email; commissionRate: MockDecimalLike; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; }[]; payoutBatch: null; } = {
         id: orderId,
         venueId: 'venue-1',
         serverStaffId: null,
@@ -379,7 +380,7 @@ describe('SettlementService', () => {
       const oldBatchId: string = 'batch-6-old';
       const newBatchId: string = 'batch-6-new';
 
-      const mockOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: string; }; serverStaff: null; items: { item: { merchantId: string; merchant: { paypalEmail: string; commissionRate: MockDecimalLike; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; }[]; payoutBatch: { id: string; orderId: string; status: string; attempts: number; paypalBatchId: null; lastError: string; dispatchedAt: null; }; } = {
+      const mockOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: Email; }; serverStaff: null; items: { item: { merchantId: string; merchant: { paypalEmail: Email; commissionRate: MockDecimalLike; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; }[]; payoutBatch: { id: string; orderId: string; status: string; attempts: number; paypalBatchId: null; lastError: string; dispatchedAt: null; }; } = {
         id: orderId,
         venueId: 'venue-1',
         serverStaffId: null,
@@ -446,7 +447,7 @@ describe('SettlementService', () => {
       const orderId: string = 'order-7';
       const batchId: string = 'batch-7';
 
-      const mockOrder: { id: string; venueId: string; serverStaffId: string; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: string; }; serverStaff: { paypalEmail: string; }; items: ({ item: { merchantId: string; merchant: { paypalEmail: string; commissionRate: { toString: () => string; }; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; } | { item: { merchantId: string; merchant: { paypalEmail: string; commissionRate: MockDecimalLike; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; })[]; payoutBatch: null; } = {
+      const mockOrder: { id: string; venueId: string; serverStaffId: string; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: Email; }; serverStaff: { paypalEmail: Email; }; items: ({ item: { merchantId: string; merchant: { paypalEmail: Email; commissionRate: { toString: () => string; }; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; } | { item: { merchantId: string; merchant: { paypalEmail: Email; commissionRate: MockDecimalLike; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; })[]; payoutBatch: null; } = {
         id: orderId,
         venueId: 'venue-1',
         serverStaffId: 'staff-1',
@@ -514,7 +515,7 @@ describe('SettlementService', () => {
 
   describe('Status mapping branches', () => {
     it('maps existing QUEUED and COMPLETED payout batches on idempotent dispatch', async () => {
-      const baseOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: string; }; serverStaff: null; items: never[]; } = {
+      const baseOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: Email; }; serverStaff: null; items: never[]; } = {
         id: 'order-status-map',
         venueId: 'venue-1',
         serverStaffId: null,
@@ -580,7 +581,7 @@ describe('SettlementService', () => {
     });
 
     it('handles $transaction errors with and without constraint/transaction keywords', async () => {
-      const baseOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: string; }; serverStaff: null; items: { quantity: number; unitPrice: MockDecimalLike; item: { merchantId: string; merchant: { id: string; merchantType: string; commissionRate: MockDecimalLike; paypalEmail: string; }; }; }[]; payoutBatch: null; } = {
+      const baseOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: Email; }; serverStaff: null; items: { quantity: number; unitPrice: MockDecimalLike; item: { merchantId: string; merchant: { id: string; merchantType: string; commissionRate: MockDecimalLike; paypalEmail: Email; }; }; }[]; payoutBatch: null; } = {
         id: 'order-tx-err',
         venueId: 'venue-1',
         serverStaffId: null,

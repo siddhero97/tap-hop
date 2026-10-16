@@ -1,2 +1,1 @@
-// Zod schemas and exports added in later tasks
-export {};
+export type Email = `${string}@${string}.${string}`;

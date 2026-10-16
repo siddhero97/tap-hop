@@ -4,6 +4,7 @@ import {
   PayoutStatus,
 } from '@tabhop/database';
 import { Decimal } from '@prisma/client/runtime/library';
+import type { Email } from '../lib/email.js';
 
 export enum OrderStatus {
   PENDING = 'PENDING',
@@ -40,7 +41,7 @@ export interface SplitRow {
   recipientType: RecipientType;
   merchantId?: string;
   staffId?: string;
-  receiverEmail: string;
+  receiverEmail: Email;
   amountCents: number;
 }
 

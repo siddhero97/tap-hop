@@ -13,6 +13,7 @@ import {
   type AuthenticatedUser,
 } from '../../src/auth/auth.service.js';
 import { RegisterSchema, LoginSchema } from '../../src/auth/auth.validator.js';
+import { isEmail, toEmail, EmailSchema, type Email } from '../../src/lib/email.js';
 import {
   extractTokenFromRequest,
   authMiddleware,
@@ -64,7 +65,7 @@ describe('Feature: Authentication & Multi-Role Access Control (Unit)', () => {
 
   describe('Scenario: Validating registration and login payloads', () => {
     it('Given an unnormalized email and no role in RegisterSchema, When parsed, Then email is trimmed/lowercased and role defaults to PATRON', () => {
-      const validatedPatronRegistration: { email: string; password: string; displayName: string; role: "PATRON" | "STAFF" | "MERCHANT_ADMIN" | "PLATFORM_SUPPORT" | "PLATFORM_FINANCE" | "PLATFORM_ADMIN"; merchantId?: string | undefined; staffId?: string | undefined; } = RegisterSchema.parse({
+      const validatedPatronRegistration: { email: Email; password: string; displayName: string; role: "PATRON" | "STAFF" | "MERCHANT_ADMIN" | "PLATFORM_SUPPORT" | "PLATFORM_FINANCE" | "PLATFORM_ADMIN"; merchantId?: string | undefined; staffId?: string | undefined; } = RegisterSchema.parse({
         email: '  Elena.Patron@Example.COM ',
         password: 'password123',
         displayName: 'Elena Patron',
@@ -83,11 +84,20 @@ describe('Feature: Authentication & Multi-Role Access Control (Unit)', () => {
     });
 
     it('Given an uppercase email with whitespace in LoginSchema, When parsed, Then email is normalized', () => {
-      const validatedAdminLogin: { email: string; password: string; } = LoginSchema.parse({
+      const validatedAdminLogin: { email: Email; password: string; } = LoginSchema.parse({
         email: '  Executive.Admin@TabHop.io ',
         password: 'secretpassword',
       });
       expect(validatedAdminLogin.email).toBe('executive.admin@tabhop.io');
+    });
+
+    it('Given valid and invalid email strings, When tested with isEmail, toEmail, and EmailSchema, Then valid emails normalize and invalid emails are rejected', () => {
+      expect(isEmail('elena.patron@example.com')).toBe(true);
+      expect(isEmail('invalid-email')).toBe(false);
+      const normalizedEmail: Email = toEmail('  Marco.Bartender@CopperKettle.com ');
+      expect(normalizedEmail).toBe('marco.bartender@copperkettle.com');
+      expect(() => toEmail('not-an-email')).toThrow('Invalid email address: not-an-email');
+      expect(EmailSchema.parse('  Claire.Admin@TabHop.io ')).toBe('claire.admin@tabhop.io');
     });
   });
 
@@ -464,7 +474,7 @@ describe('Feature: Authentication & Multi-Role Access Control (Unit)', () => {
         {
           user: {
             id: 'patron-elena-id',
-            email: 'elena@example.com',
+            email: 'elena@example.com' as Email,
             displayName: 'Elena Patron',
             role: UserRole.PATRON,
             isActive: true,
@@ -492,7 +502,7 @@ describe('Feature: Authentication & Multi-Role Access Control (Unit)', () => {
           requestId: 'req-merchant',
           user: {
             id: 'brewery-owner-id',
-            email: 'owner@brewery.com',
+            email: 'owner@brewery.com' as Email,
             displayName: 'Brewery Owner',
             role: UserRole.MERCHANT_ADMIN,
             isActive: true,
@@ -511,7 +521,7 @@ describe('Feature: Authentication & Multi-Role Access Control (Unit)', () => {
           requestId: 'req-support',
           user: {
             id: 'support-specialist-id',
-            email: 'support@tabhop.io',
+            email: 'support@tabhop.io' as Email,
             displayName: 'Support Specialist',
             role: UserRole.PLATFORM_SUPPORT,
             isActive: true,
@@ -530,7 +540,7 @@ describe('Feature: Authentication & Multi-Role Access Control (Unit)', () => {
           requestId: 'req-finance',
           user: {
             id: 'finance-analyst-id',
-            email: 'finance@tabhop.io',
+            email: 'finance@tabhop.io' as Email,
             displayName: 'Finance Analyst',
             role: UserRole.PLATFORM_FINANCE,
             isActive: true,

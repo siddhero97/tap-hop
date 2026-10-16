@@ -6,6 +6,7 @@ import { PayPalGateway, PayoutBatchRequest } from '../payments/payments.gateway.
 import { PayPalBatchStatus } from '../payments/payments.model.js';
 import { OrderStatus, type OrderWithItems, type SplitRow } from '../orders/orders.model.js';
 import { computeSplit } from './settlements.split.js';
+import type { Email } from '../lib/email.js';
 import { toCents, fromCents } from '../lib/money.js';
 import { logger } from '../lib/logger.js';
 import { ServiceError } from '../lib/service-error.js';
@@ -73,7 +74,7 @@ export class SettlementService {
       };
     } else {
       // Build vendor emails map
-      const vendorEmails: Map<string, string> = new Map<string, string>();
+      const vendorEmails: Map<string, Email> = new Map<string, Email>();
       vendorEmails.set(order.venueId, order.venue.paypalEmail);
       if (order.serverStaffId && order.serverStaff) {
         vendorEmails.set(order.serverStaffId, order.serverStaff.paypalEmail);
@@ -155,7 +156,7 @@ export class SettlementService {
    * Build PayPal payout request from split rows.
    */
   private buildPayoutRequest(split: SplitRow[], order: { id: string }): PayoutBatchRequest {
-    const items: { recipient_type: "EMAIL"; amount: { value: string; currency: string; }; receiver: string; note: string; sender_item_id: string; }[] = split.map((row, index) => ({
+    const items: { recipient_type: "EMAIL"; amount: { value: string; currency: string; }; receiver: Email; note: string; sender_item_id: string; }[] = split.map((row, index) => ({
       recipient_type: 'EMAIL' as const,
       amount: {
         value: fromCents(row.amountCents).toFixed(2),

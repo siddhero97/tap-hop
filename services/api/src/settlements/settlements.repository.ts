@@ -1,5 +1,6 @@
 import { prisma, PayoutStatus, Prisma, RecipientType } from '@tabhop/database';
 import type { SplitRow } from '../orders/orders.model.js';
+import type { Email } from '../lib/email.js';
 import { fromCents } from '../lib/money.js';
 import type {
   PayoutBatchRecordDto,
@@ -36,7 +37,7 @@ export async function findOrderForSettlementDispatch(
   orderId: string
 ): Promise<SettlementOrderWithRelationsDto> {
   const order: SettlementOrderWithRelationsDto | null =
-    await db.order.findUnique({
+    (await db.order.findUnique({
       where: { id: orderId },
       include: {
         venue: true,
@@ -52,13 +53,13 @@ export async function findOrderForSettlementDispatch(
         },
         payoutBatch: true,
       },
-    });
-    
-    if (!order) {
-      throw new Error(`Order not found: ${orderId}`);
-    }
-  
-    return order;
+    })) as SettlementOrderWithRelationsDto | null;
+
+  if (!order) {
+    throw new Error(`Order not found: ${orderId}`);
+  }
+
+  return order;
 }
 
 export async function savePayoutBatchTransaction(params: {
@@ -93,7 +94,7 @@ export async function savePayoutBatchTransaction(params: {
         newBatch = initialBatch;
       }
 
-      const items: { payoutBatchId: string; merchantId: string | null; staffId: string | null; recipientType: RecipientType; receiverEmail: string; amount: Prisma.Decimal; currency: string; senderItemId: string; status: "PROCESSING"; }[] = params.split.map((row, index) => ({
+      const items: { payoutBatchId: string; merchantId: string | null; staffId: string | null; recipientType: RecipientType; receiverEmail: Email; amount: Prisma.Decimal; currency: string; senderItemId: string; status: "PROCESSING"; }[] = params.split.map((row, index) => ({
         payoutBatchId: newBatch.id,
         merchantId: row.merchantId || null,
         staffId: row.staffId || null,

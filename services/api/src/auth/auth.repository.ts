@@ -1,4 +1,5 @@
 import { prisma, UserRole } from '@tabhop/database';
+import type { Email } from '../lib/email.js';
 import type {
   MerchantLookupDto,
   SessionRecordDto,
@@ -33,11 +34,11 @@ export async function createSessionRecord(data: {
 }
 
 export async function findUserByEmail(
-  email: string
+  email: Email
 ): Promise<UserRecordDto | null> {
-  const existing: UserRecordDto | null = await db.user.findUnique({
+  const existing: UserRecordDto | null = (await db.user.findUnique({
     where: { email },
-  });
+  })) as UserRecordDto | null;
   return existing;
 }
 
@@ -60,16 +61,16 @@ export async function findStaffById(
 }
 
 export async function createUserRecord(data: {
-  email: string;
+  email: Email;
   passwordHash: string;
   displayName: string;
   role: UserRole;
   merchantId: string | null;
   staffId: string | null;
 }): Promise<UserRecordDto> {
-  const user: UserRecordDto = await db.user.create({
+  const user: UserRecordDto = (await db.user.create({
     data,
-  });
+  })) as UserRecordDto;
   return user;
 }
 
@@ -96,9 +97,9 @@ export async function revokeSessionById(
 export async function findSessionWithUserByTokenHash(
   tokenHash: string
 ): Promise<SessionWithUserRecordDto | null> {
-  const session: SessionWithUserRecordDto | null = await db.session.findUnique({
+  const session: SessionWithUserRecordDto | null = (await db.session.findUnique({
     where: { tokenHash },
     include: { user: true },
-  });
+  })) as SessionWithUserRecordDto | null;
   return session;
 }

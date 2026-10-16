@@ -10,6 +10,7 @@ vi.mock('@tabhop/database', () => ({
 
 import { computeSplit } from '../../src/settlements/settlements.split';
 import { RecipientType, type OrderWithItems, type SplitRow } from '../../src/orders/orders.model';
+import type { Email } from '../../src/lib/email';
 
 describe('settlement split', () => {
   describe('computeSplit', () => {
@@ -32,7 +33,7 @@ describe('settlement split', () => {
         ],
       };
 
-      const vendorEmails: Map<string, string> = new Map([['venue-1', 'venue@example.com']]);
+      const vendorEmails: Map<string, Email> = new Map([['venue-1', 'venue@example.com']]);
       const result: SplitRow[] = computeSplit(order, vendorEmails);
 
       expect(result).toHaveLength(1);
@@ -73,7 +74,7 @@ describe('settlement split', () => {
         ],
       };
 
-      const vendorEmails: Map<string, string> = new Map([
+      const vendorEmails: Map<string, Email> = new Map([
         ['venue-1', 'venue@example.com'],
         ['partner-1', 'partner@example.com'],
       ]);
@@ -118,7 +119,7 @@ describe('settlement split', () => {
         ],
       };
 
-      const vendorEmails: Map<string, string> = new Map([
+      const vendorEmails: Map<string, Email> = new Map([
         ['venue-1', 'venue@example.com'],
         ['staff-1', 'staff@example.com'],
       ]);
@@ -164,7 +165,7 @@ describe('settlement split', () => {
         ],
       };
 
-      const vendorEmails: Map<string, string> = new Map([['venue-1', 'venue@example.com']]);
+      const vendorEmails: Map<string, Email> = new Map([['venue-1', 'venue@example.com']]);
       const result: SplitRow[] = computeSplit(order, vendorEmails);
 
       expect(result).toHaveLength(1);
@@ -205,7 +206,7 @@ describe('settlement split', () => {
         ],
       };
 
-      const vendorEmails: Map<string, string> = new Map([
+      const vendorEmails: Map<string, Email> = new Map([
         ['venue-1', 'venue@example.com'],
         ['partner-1', 'partner1@example.com'],
         ['partner-2', 'partner2@example.com'],
@@ -250,7 +251,7 @@ describe('settlement split', () => {
         ],
       };
 
-      const vendorEmails: Map<string, string> = new Map([
+      const vendorEmails: Map<string, Email> = new Map([
         ['venue-1', 'venue@example.com'],
         ['partner-1', 'partner@example.com'],
       ]);
@@ -292,7 +293,7 @@ describe('settlement split', () => {
         ],
       };
 
-      const vendorEmails: Map<string, string> = new Map([['venue-1', 'venue@example.com']]);
+      const vendorEmails: Map<string, Email> = new Map([['venue-1', 'venue@example.com']]);
 
       expect(() => computeSplit(order, vendorEmails)).toThrow(/Cent invariant/);
     });
@@ -317,7 +318,7 @@ describe('settlement split', () => {
       };
 
       // Empty vendor emails map
-      const vendorEmails: Map<string, string> = new Map<string, string>();
+      const vendorEmails: Map<string, Email> = new Map<string, Email>();
       const result: SplitRow[] = computeSplit(order, vendorEmails);
 
       expect(result).toHaveLength(1);
@@ -345,7 +346,7 @@ describe('settlement split', () => {
         ],
       };
 
-      const vendorEmails: Map<string, string> = new Map<string, string>();
+      const vendorEmails: Map<string, Email> = new Map<string, Email>();
       const result: SplitRow[] = computeSplit(order, vendorEmails);
 
       const partnerRow: SplitRow | undefined = result.find(r => r.merchantId === 'partner-missing');
@@ -382,7 +383,7 @@ describe('settlement split', () => {
         ],
       };
 
-      const vendorEmails: Map<string, string> = new Map([
+      const vendorEmails: Map<string, Email> = new Map([
         ['venue-1', 'venue@example.com'],
         ['partner-1', 'partner@example.com'],
       ]);
@@ -418,7 +419,7 @@ describe('settlement split', () => {
           },
         ],
       };
-      const vendorEmails: Map<string, string> = new Map([['venue-1', 'venue@example.com']]);
+      const vendorEmails: Map<string, Email> = new Map([['venue-1', 'venue@example.com']]);
 
       expect(() =>
         computeSplit({ ...baseOrder, subtotalCents: -1000 }, vendorEmails)
@@ -465,7 +466,7 @@ describe('settlement split', () => {
           },
         ],
       };
-      const vendorEmails: Map<string, string> = new Map([['venue-1', 'venue@example.com']]);
+      const vendorEmails: Map<string, Email> = new Map([['venue-1', 'venue@example.com']]);
 
       expect(() => computeSplit(order, vendorEmails)).toThrow(
         'Item lineCents cannot be negative'
@@ -490,7 +491,7 @@ describe('settlement split', () => {
           },
         ],
       };
-      const vendorEmails: Map<string, string> = new Map([
+      const vendorEmails: Map<string, Email> = new Map([
         ['venue-1', 'venue@example.com'],
         ['partner-1', 'partner@example.com'],
       ]);
@@ -541,7 +542,7 @@ describe('settlement split', () => {
           },
         ],
       };
-      const vendorEmails: Map<string, string> = new Map([
+      const vendorEmails: Map<string, Email> = new Map([
         ['venue-1', 'venue@example.com'],
         ['partner-zero', 'zero@example.com'],
         ['partner-full', 'full@example.com'],
@@ -575,7 +576,7 @@ describe('settlement split', () => {
           },
         ],
       };
-      const vendorEmails: Map<string, string> = new Map([['venue-1', 'venue@example.com']]);
+      const vendorEmails: Map<string, Email> = new Map([['venue-1', 'venue@example.com']]);
 
       expect(() => computeSplit(order, vendorEmails)).toThrow(
         'Stakeholder share cannot be negative for order order-neg-platform-share: platform share is -380 cents'
@@ -653,7 +654,7 @@ describe('settlement split', () => {
         },
       ];
 
-      const vendorEmails: Map<string, string> = new Map([
+      const vendorEmails: Map<string, Email> = new Map([
         ['venue-1', 'venue@example.com'],
         ['partner-1', 'partner1@example.com'],
         ['partner-2', 'partner2@example.com'],

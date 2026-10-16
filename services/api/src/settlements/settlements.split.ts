@@ -1,5 +1,6 @@
 import { RecipientType, type SplitRow, type OrderWithItems } from '../orders/orders.model.js';
 import { MerchantType } from '@tabhop/database';
+import type { Email } from '../lib/email.js';
 import { assertCentInvariant } from '../lib/money.js';
 
 /**
@@ -14,7 +15,7 @@ import { assertCentInvariant } from '../lib/money.js';
  * 5. Platform fee: retained (no payout row)
  * Invariant: sum of rows === (totalCents - platformFeeCents)
  */
-export function computeSplit(order: OrderWithItems, vendorEmails: Map<string, string>): SplitRow[] {
+export function computeSplit(order: OrderWithItems, vendorEmails: Map<string, Email>): SplitRow[] {
   if (
     order.subtotalCents < 0 ||
     order.taxCents < 0 ||
@@ -26,7 +27,7 @@ export function computeSplit(order: OrderWithItems, vendorEmails: Map<string, st
   }
 
   const rows: Map<string, SplitRow> = new Map();
-  const venueEmail: string = vendorEmails.get(order.venueId) || 'venue@example.com';
+  const venueEmail: Email = vendorEmails.get(order.venueId) || 'venue@example.com';
 
   // Process line items
   for (const item of order.items) {
@@ -47,7 +48,7 @@ export function computeSplit(order: OrderWithItems, vendorEmails: Map<string, st
       });
     } else {
       // Partner item: split between partner and venue
-      const partnerEmail: string = vendorEmails.get(item.merchantId) || 'unknown@example.com';
+      const partnerEmail: Email = vendorEmails.get(item.merchantId) || 'unknown@example.com';
       const partnerCents: number = Math.floor(item.lineCents * (1 - item.commissionRate));
       const venueCut: number = item.lineCents - partnerCents;
 
