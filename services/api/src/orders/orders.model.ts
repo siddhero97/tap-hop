@@ -4,6 +4,7 @@ import {
   PayoutStatus,
 } from '@tabhop/database';
 import { Decimal } from '@prisma/client/runtime/library';
+import type { Currency } from '../lib/currency.js';
 import type { Email } from '../lib/email.js';
 
 export enum OrderStatus {
@@ -62,7 +63,7 @@ export interface OrderRecordDto {
   tipAmount: Decimal;
   platformFeeAmount: Decimal;
   totalAmount: Decimal;
-  currency: string;
+  currency: Currency;
   idempotencyKey: string | null;
   capturedAt: Date | null;
   createdAt: Date;

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach, type Mock } from 'vitest';
 import { PayPalRestGateway } from '../../src/payments/payments.rest-gateway';
 import { PayPalCaptureStatus, PayPalBatchStatus } from '../../src/payments/payments.model';
+import { Currency } from '../../src/lib/currency';
 
 describe('PayPalRestGateway (mocked)', () => {
   let gateway: PayPalRestGateway;
@@ -34,7 +35,7 @@ describe('PayPalRestGateway (mocked)', () => {
       const result: { paypalOrderId: string; approveUrl: string } = await gateway.createOrder({
         referenceId: 'ref-1',
         amountCents: 1000,
-        currency: 'USD',
+        currency: Currency.USD,
       });
 
       expect(result.paypalOrderId).toBe('order-123');
@@ -68,14 +69,14 @@ describe('PayPalRestGateway (mocked)', () => {
       await gateway.createOrder({
         referenceId: 'ref-1',
         amountCents: 1000,
-        currency: 'USD',
+        currency: Currency.USD,
       });
 
       // Second call reuses token
       await gateway.createOrder({
         referenceId: 'ref-2',
         amountCents: 2000,
-        currency: 'USD',
+        currency: Currency.USD,
       });
 
       // Should only have 3 calls: 1 token + 2 orders (no second token fetch)
@@ -101,7 +102,7 @@ describe('PayPalRestGateway (mocked)', () => {
       const result: { paypalOrderId: string; approveUrl: string } = await gateway.createOrder({
         referenceId: 'ref-1',
         amountCents: 1000,
-        currency: 'USD',
+        currency: Currency.USD,
       });
 
       expect(result.paypalOrderId).toBe('order-123');
@@ -125,7 +126,7 @@ describe('PayPalRestGateway (mocked)', () => {
       await gateway.createOrder({
         referenceId: 'ref-1',
         amountCents: 1000,
-        currency: 'USD',
+        currency: Currency.USD,
       });
 
       const orderCall: [string, { headers: Record<string, string>; body: string }] = fetchMock.mock.calls[1];
@@ -149,7 +150,7 @@ describe('PayPalRestGateway (mocked)', () => {
       await gateway.createOrder({
         referenceId: 'ref-1',
         amountCents: 1999,
-        currency: 'USD',
+        currency: Currency.USD,
       });
 
       const orderCall: [string, { headers: Record<string, string>; body: string }] = fetchMock.mock.calls[1];
@@ -173,7 +174,7 @@ describe('PayPalRestGateway (mocked)', () => {
         gateway.createOrder({
           referenceId: 'ref-1',
           amountCents: 1000,
-          currency: 'USD',
+          currency: Currency.USD,
         })
       ).rejects.toThrow('PayPal createOrder failed: Unauthorized');
     });
@@ -195,7 +196,7 @@ describe('PayPalRestGateway (mocked)', () => {
       const result: { paypalOrderId: string; approveUrl: string } = await gateway.createOrder({
         referenceId: 'ref-1',
         amountCents: 1000,
-        currency: 'USD',
+        currency: Currency.USD,
       });
 
       expect(result.paypalOrderId).toBe('order-123');
@@ -391,7 +392,7 @@ describe('PayPalRestGateway (mocked)', () => {
         items: [
           {
             recipient_type: 'EMAIL',
-            amount: { value: '50.00', currency: 'USD' },
+            amount: { value: '50.00', currency: Currency.USD },
             receiver: 'test@example.com',
             note: 'Payment',
             sender_item_id: 'item-1',
@@ -496,7 +497,7 @@ describe('PayPalRestGateway (mocked)', () => {
           items: [
             {
               recipient_type: 'EMAIL',
-              amount: { value: '-25.00', currency: 'USD' },
+              amount: { value: '-25.00', currency: Currency.USD },
               receiver: 'test@example.com',
               note: 'Negative',
               sender_item_id: 'item-1',
@@ -515,7 +516,7 @@ describe('PayPalRestGateway (mocked)', () => {
           items: [
             {
               recipient_type: 'EMAIL',
-              amount: { value: '0.00', currency: 'USD' },
+              amount: { value: '0.00', currency: Currency.USD },
               receiver: 'test@example.com',
               note: 'Zero',
               sender_item_id: 'item-1',
@@ -534,7 +535,7 @@ describe('PayPalRestGateway (mocked)', () => {
         gateway.createOrder({
           referenceId: 'ref-zero',
           amountCents: 0,
-          currency: 'USD',
+          currency: Currency.USD,
         })
       ).rejects.toThrow('Order amountCents must be positive');
 
@@ -542,7 +543,7 @@ describe('PayPalRestGateway (mocked)', () => {
         gateway.createOrder({
           referenceId: 'ref-neg',
           amountCents: -100,
-          currency: 'USD',
+          currency: Currency.USD,
         })
       ).rejects.toThrow('Order amountCents must be positive');
 
@@ -641,7 +642,7 @@ describe('PayPalRestGateway (mocked)', () => {
         gateway.createOrder({
           referenceId: 'ref-1',
           amountCents: 1000,
-          currency: 'USD',
+          currency: Currency.USD,
         })
       ).rejects.toThrow('PayPal auth failed: Unauthorized');
     });
@@ -688,7 +689,7 @@ describe('PayPalRestGateway (mocked)', () => {
       const orderResult: { paypalOrderId: string; approveUrl: string } = await gateway.createOrder({
         referenceId: 'ref-1',
         amountCents: 1000,
-        currency: 'USD',
+        currency: Currency.USD,
       });
 
       // Second operation should reuse token

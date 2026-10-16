@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { MerchantType, OrderStatus as PrismaOrderStatus, PayoutStatus, UserRole } from '@tabhop/database';
 import { Decimal } from '@prisma/client/runtime/library';
+import { Currency } from '../../src/lib/currency';
 
 const { mockPrisma, mockTx } = vi.hoisted(() => {
   const tx: { order: { create: Mock<any, any>; }; orderItem: { createMany: Mock<any, any>; }; payoutBatch: { create: Mock<any, any>; update: Mock<any, any>; }; payoutBatchItem: { createMany: Mock<any, any>; deleteMany: Mock<any, any>; }; } = {
@@ -412,7 +413,7 @@ describe('Feature: Module Database Repositories and DTO Contracts', () => {
         tipAmount: new Decimal('3.00'),
         platformFeeAmount: new Decimal('0.40'),
         totalAmount: new Decimal('20.72'),
-        currency: 'USD',
+        currency: Currency.USD,
         idempotencyKey: 'idem-elena-1',
         paypalOrderId: null,
         paypalCaptureId: null,
@@ -503,7 +504,7 @@ describe('Feature: Module Database Repositories and DTO Contracts', () => {
         id: 'order-payment-1',
         status: PrismaOrderStatus.PENDING,
         totalAmount: new Decimal('25.65'),
-        currency: 'USD',
+        currency: Currency.USD,
         paypalOrderId: null,
         paypalCaptureId: null,
       };

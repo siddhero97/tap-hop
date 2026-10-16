@@ -12,19 +12,19 @@ const db: PaymentsDatabaseClient = prisma;
 export async function findPaymentOrderById(
   orderId: string
 ): Promise<PaymentOrderRecordDto | null> {
-  const order: PaymentOrderRecordDto | null = await db.order.findUnique({
+  const order: PaymentOrderRecordDto | null = (await db.order.findUnique({
     where: { id: orderId },
-  });
+  })) as PaymentOrderRecordDto | null;
   return order;
 }
 
 export async function updateOrderStatusFailed(
   orderId: string
 ): Promise<PaymentOrderRecordDto> {
-  const updatedOrder: PaymentOrderRecordDto = await db.order.update({
+  const updatedOrder: PaymentOrderRecordDto = (await db.order.update({
     where: { id: orderId },
     data: { status: OrderStatus.FAILED },
-  });
+  })) as PaymentOrderRecordDto;
   return updatedOrder;
 }
 
@@ -32,13 +32,13 @@ export async function updateOrderAuthorized(
   orderId: string,
   paypalOrderId: string
 ): Promise<PaymentOrderRecordDto> {
-  const updatedOrder: PaymentOrderRecordDto = await db.order.update({
+  const updatedOrder: PaymentOrderRecordDto = (await db.order.update({
     where: { id: orderId },
     data: {
       paypalOrderId,
       status: OrderStatus.AUTHORIZED,
     },
-  });
+  })) as PaymentOrderRecordDto;
   return updatedOrder;
 }
 
@@ -47,13 +47,13 @@ export async function updateOrderCaptured(
   paypalCaptureId: string,
   capturedAt: Date
 ): Promise<PaymentOrderRecordDto> {
-  const updatedOrder: PaymentOrderRecordDto = await db.order.update({
+  const updatedOrder: PaymentOrderRecordDto = (await db.order.update({
     where: { id: orderId },
     data: {
       paypalCaptureId,
       status: OrderStatus.CAPTURED,
       capturedAt,
     },
-  });
+  })) as PaymentOrderRecordDto;
   return updatedOrder;
 }

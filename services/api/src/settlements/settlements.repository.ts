@@ -1,5 +1,6 @@
 import { prisma, PayoutStatus, Prisma, RecipientType } from '@tabhop/database';
 import type { SplitRow } from '../orders/orders.model.js';
+import { DEFAULT_CURRENCY, type Currency } from '../lib/currency.js';
 import type { Email } from '../lib/email.js';
 import { fromCents } from '../lib/money.js';
 import type {
@@ -66,7 +67,9 @@ export async function savePayoutBatchTransaction(params: {
   orderId: string;
   existingBatch: PayoutBatchRecordDto | null;
   split: SplitRow[];
+  currency?: Currency;
 }): Promise<PayoutBatchRecordDto> {
+  const batchCurrency: Currency = params.currency ?? DEFAULT_CURRENCY;
   const createdBatch: PayoutBatchRecordDto = await db.$transaction(
     async (tx: SettlementTransactionClient) => {
       let newBatch: PayoutBatchRecordDto;
@@ -94,14 +97,24 @@ export async function savePayoutBatchTransaction(params: {
         newBatch = initialBatch;
       }
 
-      const items: { payoutBatchId: string; merchantId: string | null; staffId: string | null; recipientType: RecipientType; receiverEmail: Email; amount: Prisma.Decimal; currency: string; senderItemId: string; status: "PROCESSING"; }[] = params.split.map((row, index) => ({
+      const items: {
+        payoutBatchId: string;
+        merchantId: string | null;
+        staffId: string | null;
+        recipientType: RecipientType;
+        receiverEmail: Email;
+        amount: Prisma.Decimal;
+        currency: Currency;
+        senderItemId: string;
+        status: 'PROCESSING';
+      }[] = params.split.map((row, index) => ({
         payoutBatchId: newBatch.id,
         merchantId: row.merchantId || null,
         staffId: row.staffId || null,
         recipientType: row.recipientType,
         receiverEmail: row.receiverEmail,
         amount: fromCents(row.amountCents),
-        currency: 'USD',
+        currency: batchCurrency,
         senderItemId: `${newBatch.id}-${index}`,
         status: PayoutStatus.PROCESSING,
       }));

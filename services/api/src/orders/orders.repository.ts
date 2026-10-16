@@ -30,10 +30,10 @@ export async function findOrderByIdempotencyKey(
   idempotencyKey: string
 ): Promise<OrderWithItemsRecordDto | null> {
   const existingOrder: OrderWithItemsRecordDto | null =
-    await db.order.findUnique({
+    (await db.order.findUnique({
       where: { idempotencyKey },
       include: { items: { include: { item: true } } },
-    });
+    })) as OrderWithItemsRecordDto | null;
   return existingOrder;
 }
 
@@ -83,7 +83,7 @@ export async function createOrderWithItemsTransaction(params: {
 }): Promise<OrderRecordDto> {
   const order: OrderRecordDto = await db.$transaction(
     async (tx: OrderTransactionClient) => {
-      const newOrder: OrderRecordDto = await tx.order.create({
+      const newOrder: OrderRecordDto = (await tx.order.create({
         data: {
           venueId: params.venueId,
           tableNumber: params.tableNumber,
@@ -96,7 +96,7 @@ export async function createOrderWithItemsTransaction(params: {
           totalAmount: params.totalAmount,
           status: OrderStatus.PENDING,
         },
-      });
+      })) as OrderRecordDto;
 
       await tx.orderItem.createMany({
         data: params.lines.map((line) => ({
@@ -116,9 +116,9 @@ export async function createOrderWithItemsTransaction(params: {
 export async function findOrderWithDetailsById(
   id: string
 ): Promise<OrderWithDetailsRecordDto | null> {
-  const order: OrderWithDetailsRecordDto | null = await db.order.findUnique({
+  const order: OrderWithDetailsRecordDto | null = (await db.order.findUnique({
     where: { id },
     include: { items: { include: { item: true } }, payoutBatch: true },
-  });
+  })) as OrderWithDetailsRecordDto | null;
   return order;
 }

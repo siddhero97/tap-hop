@@ -6,6 +6,7 @@ import { PayPalGateway, PayoutBatchRequest } from '../payments/payments.gateway.
 import { PayPalBatchStatus } from '../payments/payments.model.js';
 import { OrderStatus, type OrderWithItems, type SplitRow } from '../orders/orders.model.js';
 import { computeSplit } from './settlements.split.js';
+import { DEFAULT_CURRENCY, type Currency } from '../lib/currency.js';
 import type { Email } from '../lib/email.js';
 import { toCents, fromCents } from '../lib/money.js';
 import { logger } from '../lib/logger.js';
@@ -103,9 +104,13 @@ export class SettlementService {
 
       // Compute split
       const split: SplitRow[] = computeSplit(orderWithItems, vendorEmails);
+      const orderCurrency: Currency = order.currency ?? DEFAULT_CURRENCY;
 
       // Build PayPal request
-      const payoutRequest: PayoutBatchRequest = this.buildPayoutRequest(split, order);
+      const payoutRequest: PayoutBatchRequest = this.buildPayoutRequest(split, {
+        id: order.id,
+        currency: orderCurrency,
+      });
 
       // Create batch in transaction and dispatch to gateway
       let batch: PayoutBatchRecordDto | undefined;
@@ -115,6 +120,7 @@ export class SettlementService {
             orderId: order.id,
             existingBatch: order.payoutBatch,
             split,
+            currency: orderCurrency,
           });
         batch = createdBatch;
 
@@ -155,12 +161,21 @@ export class SettlementService {
   /**
    * Build PayPal payout request from split rows.
    */
-  private buildPayoutRequest(split: SplitRow[], order: { id: string }): PayoutBatchRequest {
-    const items: { recipient_type: "EMAIL"; amount: { value: string; currency: string; }; receiver: Email; note: string; sender_item_id: string; }[] = split.map((row, index) => ({
+  private buildPayoutRequest(
+    split: SplitRow[],
+    order: { id: string; currency: Currency }
+  ): PayoutBatchRequest {
+    const items: {
+      recipient_type: 'EMAIL';
+      amount: { value: string; currency: Currency };
+      receiver: Email;
+      note: string;
+      sender_item_id: string;
+    }[] = split.map((row, index) => ({
       recipient_type: 'EMAIL' as const,
       amount: {
         value: fromCents(row.amountCents).toFixed(2),
-        currency: 'USD',
+        currency: order.currency,
       },
       receiver: row.receiverEmail,
       note: `Payment for order ${order.id}`,

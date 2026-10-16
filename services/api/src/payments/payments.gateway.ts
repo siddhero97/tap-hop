@@ -1,4 +1,5 @@
 import { PayPalCaptureStatus, PayPalBatchStatus } from './payments.model.js';
+import type { Currency } from '../lib/currency.js';
 import type { Email } from '../lib/email.js';
 
 /**
@@ -13,7 +14,7 @@ export interface PayPalGateway {
   createOrder(input: {
     referenceId: string;
     amountCents: number;
-    currency: string;
+    currency: Currency;
   }): Promise<{ paypalOrderId: string; approveUrl: string }>;
 
   /**
@@ -50,7 +51,7 @@ export interface PayoutBatchRequest {
   };
   items: Array<{
     recipient_type: 'EMAIL';
-    amount: { value: string; currency: string };
+    amount: { value: string; currency: Currency };
     receiver: Email;
     note: string;
     sender_item_id: string;

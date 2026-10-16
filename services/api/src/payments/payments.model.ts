@@ -1,5 +1,6 @@
 import { OrderStatus } from '@tabhop/database';
 import { Decimal } from '@prisma/client/runtime/library';
+import type { Currency } from '../lib/currency.js';
 
 /**
  * Payment and settlement status enums, constants, and database DTOs.
@@ -40,5 +41,48 @@ export interface PaymentOrderRecordDto {
   paypalOrderId: string | null;
   paypalCaptureId: string | null;
   totalAmount: Decimal | { toString(): string };
-  currency: string;
+  currency: Currency;
 }
+
+export interface PayPalOAuthTokenResponse {
+  access_token: string;
+  expires_in: number;
+}
+
+export interface PayPalOrderLink {
+  rel: string;
+  href: string;
+}
+
+export interface PayPalCreateOrderResponse {
+  id: string;
+  links: PayPalOrderLink[];
+}
+
+export interface PayPalCaptureRecord {
+  id: string;
+  status: string;
+  amount: {
+    value: string;
+  };
+}
+
+export interface PayPalCaptureOrderResponse {
+  purchase_units: Array<{
+    payments: {
+      captures: PayPalCaptureRecord[];
+    };
+  }>;
+}
+
+export interface PayPalCreatePayoutBatchResponse {
+  batch_header: {
+    payout_batch_id: string;
+    batch_status: string;
+  };
+}
+
+export interface PayPalWebhookVerificationResponse {
+  verification_status: string;
+}
+

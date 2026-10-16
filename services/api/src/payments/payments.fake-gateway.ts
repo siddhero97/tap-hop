@@ -1,8 +1,9 @@
 import { PayPalGateway, PayoutBatchRequest } from './payments.gateway.js';
 import { PayPalCaptureStatus, PayPalBatchStatus } from './payments.model.js';
+import type { Currency } from '../lib/currency.js';
 
 export type FakeGatewayCallArgs =
-  | { referenceId: string; amountCents: number; currency: string }
+  | { referenceId: string; amountCents: number; currency: Currency }
   | { paypalOrderId: string }
   | PayoutBatchRequest
   | { headers: Record<string, string>; rawBody: string };
@@ -33,7 +34,7 @@ export class FakePayPalGateway implements PayPalGateway {
   async createOrder(input: {
     referenceId: string;
     amountCents: number;
-    currency: string;
+    currency: Currency;
   }): Promise<{ paypalOrderId: string; approveUrl: string }> {
     this.callLog.push({ method: 'createOrder', args: input });
     if (input.amountCents <= 0) {

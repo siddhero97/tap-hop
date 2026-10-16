@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, type MockInstance } from 'vitest';
 import { Decimal } from '@prisma/client/runtime/library';
 import { toCents, fromCents, assertCentInvariant } from '../../src/lib/money';
+import {
+  Currency,
+  DEFAULT_CURRENCY,
+  isCurrency,
+  toCurrency,
+  CurrencySchema,
+} from '../../src/lib/currency';
 
 describe('money', () => {
   describe('toCents', () => {
@@ -75,4 +82,28 @@ describe('money', () => {
       expect(() => assertCentInvariant(1500, -1500, 'negative mismatch')).toThrow(/Cent invariant/);
     });
   });
+
+  describe('currency', () => {
+    it('exposes DEFAULT_CURRENCY as USD and validates supported currency codes', () => {
+      expect(DEFAULT_CURRENCY).toBe(Currency.USD);
+      expect(isCurrency('USD')).toBe(true);
+      expect(isCurrency('EUR')).toBe(true);
+      expect(isCurrency('GBP')).toBe(true);
+      expect(isCurrency('CAD')).toBe(true);
+      expect(isCurrency('AUD')).toBe(true);
+      expect(isCurrency('JPY')).toBe(false);
+    });
+
+    it('normalizes currency strings with toCurrency and throws on unsupported codes', () => {
+      expect(toCurrency(' usd ')).toBe(Currency.USD);
+      expect(toCurrency('eur')).toBe(Currency.EUR);
+      expect(() => toCurrency('INVALID')).toThrow('Unsupported currency code: INVALID');
+    });
+
+    it('validates Currency enum values via CurrencySchema', () => {
+      expect(CurrencySchema.parse(Currency.USD)).toBe(Currency.USD);
+      expect(() => CurrencySchema.parse('XYZ')).toThrow();
+    });
+  });
 });
+

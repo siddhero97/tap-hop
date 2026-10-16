@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { FakePayPalGateway } from '../../src/payments/payments.fake-gateway';
 import { PayPalCaptureStatus, PayPalBatchStatus } from '../../src/payments/payments.model';
+import { Currency } from '../../src/lib/currency';
 
 describe('FakePayPalGateway', () => {
   let gateway: FakePayPalGateway;
@@ -14,7 +15,7 @@ describe('FakePayPalGateway', () => {
       const result: { paypalOrderId: string; approveUrl: string } = await gateway.createOrder({
         referenceId: 'order-1',
         amountCents: 1999,
-        currency: 'USD',
+        currency: Currency.USD,
       });
       expect(result.paypalOrderId).toMatch(/^FAKE-ORDER-/);
       expect(result.approveUrl).toContain('sandbox.paypal.com');
@@ -26,7 +27,7 @@ describe('FakePayPalGateway', () => {
         gateway.createOrder({
           referenceId: 'order-1',
           amountCents: 1999,
-          currency: 'USD',
+          currency: Currency.USD,
         })
       ).rejects.toThrow('Simulated PayPal error');
     });
@@ -36,7 +37,7 @@ describe('FakePayPalGateway', () => {
         gateway.createOrder({
           referenceId: 'order-zero',
           amountCents: 0,
-          currency: 'USD',
+          currency: Currency.USD,
         })
       ).rejects.toThrow('Order amountCents must be positive');
 
@@ -44,7 +45,7 @@ describe('FakePayPalGateway', () => {
         gateway.createOrder({
           referenceId: 'order-neg',
           amountCents: -500,
-          currency: 'USD',
+          currency: Currency.USD,
         })
       ).rejects.toThrow('Order amountCents must be positive');
     });
@@ -83,7 +84,7 @@ describe('FakePayPalGateway', () => {
           items: [
             {
               recipient_type: 'EMAIL',
-              amount: { value: '-10.00', currency: 'USD' },
+              amount: { value: '-10.00', currency: Currency.USD },
               receiver: 'venue@example.com',
               note: 'Negative payout',
               sender_item_id: 'item-neg',
@@ -102,7 +103,7 @@ describe('FakePayPalGateway', () => {
           items: [
             {
               recipient_type: 'EMAIL',
-              amount: { value: '0.00', currency: 'USD' },
+              amount: { value: '0.00', currency: Currency.USD },
               receiver: 'venue@example.com',
               note: 'Zero payout',
               sender_item_id: 'item-zero',
@@ -133,7 +134,7 @@ describe('FakePayPalGateway', () => {
       await gateway.createOrder({
         referenceId: 'order-1',
         amountCents: 1999,
-        currency: 'USD',
+        currency: Currency.USD,
       });
       const calls: ReturnType<FakePayPalGateway['getCalls']> = gateway.getCalls();
       expect(calls).toHaveLength(1);
@@ -144,7 +145,7 @@ describe('FakePayPalGateway', () => {
       await gateway.createOrder({
         referenceId: 'order-1',
         amountCents: 1999,
-        currency: 'USD',
+        currency: Currency.USD,
       });
       gateway.reset();
       expect(gateway.getCalls()).toHaveLength(0);

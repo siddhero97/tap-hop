@@ -5,6 +5,7 @@ import {
   PayoutStatus,
 } from '@tabhop/database';
 import { Decimal } from '@prisma/client/runtime/library';
+import type { Currency } from '../lib/currency.js';
 import type { Email } from '../lib/email.js';
 
 /**
@@ -39,6 +40,7 @@ export interface SettlementOrderWithRelationsDto {
   tipAmount: Decimal;
   platformFeeAmount: Decimal;
   totalAmount: Decimal;
+  currency?: Currency;
   venue: {
     id: string;
     paypalEmail: Email;
