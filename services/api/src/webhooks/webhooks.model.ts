@@ -1,7 +1,9 @@
+import { OrderStatus, PayoutStatus } from '@tabhop/database';
+
 /**
- * PayPal webhook event payload structure
+ * PayPal webhook event payload structure and database record DTOs.
  */
-export interface WebhookPayload {
+export type WebhookPayload = {
   id: string;
   event_type: string;
   resource?: {
@@ -13,5 +15,24 @@ export interface WebhookPayload {
       };
     };
   };
-  [key: string]: any;
+};
+
+export interface WebhookEventRecordDto {
+  id?: string;
+  eventId: string;
+  eventType?: string;
+  verified?: boolean;
+  processedAt?: Date | null;
+}
+
+export interface WebhookOrderRecordDto {
+  id: string;
+  status: OrderStatus | string;
+  paypalOrderId?: string | null;
+}
+
+export interface WebhookPayoutBatchRecordDto {
+  id: string;
+  paypalBatchId?: string | null;
+  status?: PayoutStatus | string;
 }

@@ -1,6 +1,17 @@
 import { PayPalGateway, PayoutBatchRequest } from './payments.gateway.js';
 import { PayPalCaptureStatus, PayPalBatchStatus } from './payments.model.js';
 
+export type FakeGatewayCallArgs =
+  | { referenceId: string; amountCents: number; currency: string }
+  | { paypalOrderId: string }
+  | PayoutBatchRequest
+  | { headers: Record<string, string>; rawBody: string };
+
+export interface FakeGatewayCall {
+  method: string;
+  args: FakeGatewayCallArgs;
+}
+
 /**
  * In-memory PayPal gateway for testing.
  * Returns deterministic IDs and records all calls for assertions.
@@ -9,7 +20,7 @@ export class FakePayPalGateway implements PayPalGateway {
   private orderCounter = 0;
   private captureCounter = 0;
   private batchCounter = 0;
-  private callLog: Array<{ method: string; args: any }> = [];
+  private callLog: FakeGatewayCall[] = [];
   private failureMode: string | null = null;
 
   /**
@@ -25,11 +36,14 @@ export class FakePayPalGateway implements PayPalGateway {
     currency: string;
   }): Promise<{ paypalOrderId: string; approveUrl: string }> {
     this.callLog.push({ method: 'createOrder', args: input });
+    if (input.amountCents <= 0) {
+      throw new Error('Order amountCents must be positive');
+    }
     if (this.failureMode === 'createOrder') {
       this.failureMode = null;
       throw new Error('Simulated PayPal error: invalid request');
     }
-    const id = `FAKE-ORDER-${++this.orderCounter}`;
+    const id: string = `FAKE-ORDER-${++this.orderCounter}`;
     return {
       paypalOrderId: id,
       approveUrl: `https://sandbox.paypal.com/fake-approve?orderId=${id}`,
@@ -58,6 +72,9 @@ export class FakePayPalGateway implements PayPalGateway {
     status: PayPalBatchStatus;
   }> {
     this.callLog.push({ method: 'createPayoutBatch', args: req });
+    if (req.items.some((item) => !(parseFloat(item.amount.value) > 0))) {
+      throw new Error('Payout item amount must be positive');
+    }
     if (this.failureMode === 'createPayoutBatch') {
       this.failureMode = null;
       throw new Error('Simulated PayPal error: batch creation failed');
@@ -79,7 +96,7 @@ export class FakePayPalGateway implements PayPalGateway {
   /**
    * Get call log for test assertions.
    */
-  getCalls(): Array<{ method: string; args: any }> {
+  getCalls(): FakeGatewayCall[] {
     return this.callLog;
   }
 

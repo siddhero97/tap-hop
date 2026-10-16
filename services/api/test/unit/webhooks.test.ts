@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { OrderStatus } from '../../src/orders/orders.model';
 import { PayoutStatus } from '@tabhop/database';
 
@@ -18,14 +18,35 @@ vi.mock('@tabhop/database', () => ({
   },
 }));
 
-import { WebhookService } from '../../src/webhooks/webhooks.service';
+import { WebhookService, type WebhookPrismaClient } from '../../src/webhooks/webhooks.service';
 import type { WebhookPayload } from '../../src/webhooks/webhooks.model';
+import type { PayPalGateway } from '../../src/payments/payments.gateway';
+
+interface MockWebhookPrisma {
+  webhookEvent: {
+    findUnique: Mock;
+    create: Mock;
+    update: Mock;
+  };
+  order: {
+    findUnique: Mock;
+    update: Mock;
+  };
+  payoutBatch: {
+    findUnique: Mock;
+    update: Mock;
+  };
+}
+
+type MockVerifyGateway = PayPalGateway & {
+  verifyWebhook: Mock;
+};
 
 describe('WebhookService', () => {
   let service: WebhookService;
-  let mockPrisma: any;
-  let mockGateway: any;
-  let onSettlementDispatch: any;
+  let mockPrisma: MockWebhookPrisma;
+  let mockGateway: MockVerifyGateway;
+  let onSettlementDispatch: Mock;
 
   beforeEach(() => {
     // Mock Prisma client
@@ -48,18 +69,21 @@ describe('WebhookService', () => {
     // Mock PayPal Gateway
     mockGateway = {
       verifyWebhook: vi.fn(),
-    };
+    } as unknown as MockVerifyGateway;
 
     // Mock settlement dispatch callback
     onSettlementDispatch = vi.fn();
 
-    service = new WebhookService(mockPrisma, onSettlementDispatch);
+    service = new WebhookService(
+      mockPrisma as unknown as WebhookPrismaClient,
+      onSettlementDispatch as unknown as (orderId: string) => Promise<void>
+    );
   });
 
   describe('processPayPalEvent', () => {
     describe('valid signature', () => {
       it('verifies signature and processes event', async () => {
-        const headers = { 'x-signature': 'valid' };
+        const headers: { 'x-signature': string; } = { 'x-signature': 'valid' };
         const payload: WebhookPayload = {
           id: 'evt-123',
           event_type: 'PAYMENT.CAPTURE.COMPLETED',
@@ -71,7 +95,7 @@ describe('WebhookService', () => {
             },
           },
         };
-        const rawBody = JSON.stringify(payload);
+        const rawBody: string = JSON.stringify(payload);
 
         mockGateway.verifyWebhook.mockResolvedValue(true);
         mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
@@ -113,12 +137,12 @@ describe('WebhookService', () => {
 
     describe('unverified signature', () => {
       it('throws error when signature verification fails', async () => {
-        const headers = { 'x-signature': 'invalid' };
+        const headers: { 'x-signature': string; } = { 'x-signature': 'invalid' };
         const payload: WebhookPayload = {
           id: 'evt-456',
           event_type: 'PAYMENT.CAPTURE.COMPLETED',
         };
-        const rawBody = JSON.stringify(payload);
+        const rawBody: string = JSON.stringify(payload);
 
         mockGateway.verifyWebhook.mockResolvedValue(false);
         mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
@@ -143,12 +167,12 @@ describe('WebhookService', () => {
 
     describe('replay protection', () => {
       it('returns early when eventId is duplicate', async () => {
-        const headers = { 'x-signature': 'valid' };
+        const headers: { 'x-signature': string; } = { 'x-signature': 'valid' };
         const payload: WebhookPayload = {
           id: 'evt-789',
           event_type: 'PAYMENT.CAPTURE.COMPLETED',
         };
-        const rawBody = JSON.stringify(payload);
+        const rawBody: string = JSON.stringify(payload);
 
         mockGateway.verifyWebhook.mockResolvedValue(true);
         mockPrisma.webhookEvent.findUnique.mockResolvedValue({
@@ -168,7 +192,7 @@ describe('WebhookService', () => {
 
     describe('PAYMENT.CAPTURE.COMPLETED', () => {
       it('updates order status to CAPTURED and dispatches settlement', async () => {
-        const headers = { 'x-signature': 'valid' };
+        const headers: { 'x-signature': string; } = { 'x-signature': 'valid' };
         const payload: WebhookPayload = {
           id: 'evt-capture-1',
           event_type: 'PAYMENT.CAPTURE.COMPLETED',
@@ -180,7 +204,7 @@ describe('WebhookService', () => {
             },
           },
         };
-        const rawBody = JSON.stringify(payload);
+        const rawBody: string = JSON.stringify(payload);
 
         mockGateway.verifyWebhook.mockResolvedValue(true);
         mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
@@ -213,7 +237,7 @@ describe('WebhookService', () => {
       });
 
       it('skips settlement dispatch if order already captured', async () => {
-        const headers = { 'x-signature': 'valid' };
+        const headers: { 'x-signature': string; } = { 'x-signature': 'valid' };
         const payload: WebhookPayload = {
           id: 'evt-capture-2',
           event_type: 'PAYMENT.CAPTURE.COMPLETED',
@@ -225,7 +249,7 @@ describe('WebhookService', () => {
             },
           },
         };
-        const rawBody = JSON.stringify(payload);
+        const rawBody: string = JSON.stringify(payload);
 
         mockGateway.verifyWebhook.mockResolvedValue(true);
         mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
@@ -249,7 +273,7 @@ describe('WebhookService', () => {
 
     describe('PAYMENT.PAYOUTSBATCH.SUCCESS', () => {
       it('updates payout batch status to SUCCESS', async () => {
-        const headers = { 'x-signature': 'valid' };
+        const headers: { 'x-signature': string; } = { 'x-signature': 'valid' };
         const payload: WebhookPayload = {
           id: 'evt-payout-success-1',
           event_type: 'PAYMENT.PAYOUTSBATCH.SUCCESS',
@@ -258,7 +282,7 @@ describe('WebhookService', () => {
             status: 'SUCCESS',
           },
         };
-        const rawBody = JSON.stringify(payload);
+        const rawBody: string = JSON.stringify(payload);
 
         mockGateway.verifyWebhook.mockResolvedValue(true);
         mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
@@ -288,7 +312,7 @@ describe('WebhookService', () => {
 
     describe('PAYMENT.PAYOUTSBATCH.DENIED', () => {
       it('updates payout batch status to DENIED', async () => {
-        const headers = { 'x-signature': 'valid' };
+        const headers: { 'x-signature': string; } = { 'x-signature': 'valid' };
         const payload: WebhookPayload = {
           id: 'evt-payout-denied-1',
           event_type: 'PAYMENT.PAYOUTSBATCH.DENIED',
@@ -297,7 +321,7 @@ describe('WebhookService', () => {
             status: 'DENIED',
           },
         };
-        const rawBody = JSON.stringify(payload);
+        const rawBody: string = JSON.stringify(payload);
 
         mockGateway.verifyWebhook.mockResolvedValue(true);
         mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
@@ -327,12 +351,12 @@ describe('WebhookService', () => {
 
     describe('unknown event type', () => {
       it('stores event but does not process', async () => {
-        const headers = { 'x-signature': 'valid' };
+        const headers: { 'x-signature': string; } = { 'x-signature': 'valid' };
         const payload: WebhookPayload = {
           id: 'evt-unknown-1',
           event_type: 'UNKNOWN.EVENT.TYPE',
         };
-        const rawBody = JSON.stringify(payload);
+        const rawBody: string = JSON.stringify(payload);
 
         mockGateway.verifyWebhook.mockResolvedValue(true);
         mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
@@ -353,8 +377,8 @@ describe('WebhookService', () => {
 
     describe('edge cases', () => {
       it('throws error when payload JSON is invalid', async () => {
-        const headers = { 'x-signature': 'valid' };
-        const rawBody = 'not valid json';
+        const headers: { 'x-signature': string; } = { 'x-signature': 'valid' };
+        const rawBody: string = 'not valid json';
 
         mockGateway.verifyWebhook.mockResolvedValue(true);
 
@@ -364,36 +388,46 @@ describe('WebhookService', () => {
       });
 
       it('throws error when eventId is missing', async () => {
-        const headers = { 'x-signature': 'valid' };
-        const payload: any = {
+        const headers: { 'x-signature': string; } = { 'x-signature': 'valid' };
+        const payload: Partial<WebhookPayload> = {
           event_type: 'PAYMENT.CAPTURE.COMPLETED',
         };
-        const rawBody = JSON.stringify(payload);
+        const rawBody: string = JSON.stringify(payload);
 
         mockGateway.verifyWebhook.mockResolvedValue(true);
 
         await expect(
-          service.processPayPalEvent(headers, rawBody, mockGateway)
+          service.processPayPalEvent(
+            headers,
+            rawBody,
+            mockGateway as unknown as PayPalGateway
+          )
         ).rejects.toThrow('Webhook missing eventId or eventType');
       });
 
       it('throws error when eventType is missing', async () => {
-        const headers = { 'x-signature': 'valid' };
-        const payload: any = {
+        const headers: { 'x-signature': string; } = { 'x-signature': 'valid' };
+        const payload: Partial<WebhookPayload> = {
           id: 'evt-999',
         };
-        const rawBody = JSON.stringify(payload);
+        const rawBody: string = JSON.stringify(payload);
 
         mockGateway.verifyWebhook.mockResolvedValue(true);
 
         await expect(
-          service.processPayPalEvent(headers, rawBody, mockGateway)
+          service.processPayPalEvent(
+            headers,
+            rawBody,
+            mockGateway as unknown as PayPalGateway
+          )
         ).rejects.toThrow('Webhook missing eventId or eventType');
       });
 
       it('works without settlement dispatch callback', async () => {
-        const serviceWithoutCallback = new WebhookService(mockPrisma);
-        const headers = { 'x-signature': 'valid' };
+        const serviceWithoutCallback: WebhookService = new WebhookService(
+          mockPrisma as unknown as WebhookPrismaClient
+        );
+        const headers: { 'x-signature': string; } = { 'x-signature': 'valid' };
         const payload: WebhookPayload = {
           id: 'evt-no-callback',
           event_type: 'PAYMENT.CAPTURE.COMPLETED',
@@ -405,7 +439,7 @@ describe('WebhookService', () => {
             },
           },
         };
-        const rawBody = JSON.stringify(payload);
+        const rawBody: string = JSON.stringify(payload);
 
         mockGateway.verifyWebhook.mockResolvedValue(true);
         mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
@@ -427,14 +461,14 @@ describe('WebhookService', () => {
         await serviceWithoutCallback.processPayPalEvent(
           headers,
           rawBody,
-          mockGateway
+          mockGateway as unknown as PayPalGateway
         );
 
         expect(mockPrisma.order.update).toHaveBeenCalled();
       });
 
       it('handles order not found for capture event gracefully', async () => {
-        const headers = { 'x-signature': 'valid' };
+        const headers: { 'x-signature': string; } = { 'x-signature': 'valid' };
         const payload: WebhookPayload = {
           id: 'evt-order-not-found',
           event_type: 'PAYMENT.CAPTURE.COMPLETED',
@@ -446,7 +480,7 @@ describe('WebhookService', () => {
             },
           },
         };
-        const rawBody = JSON.stringify(payload);
+        const rawBody: string = JSON.stringify(payload);
 
         mockGateway.verifyWebhook.mockResolvedValue(true);
         mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
@@ -457,14 +491,18 @@ describe('WebhookService', () => {
           processedAt: new Date(),
         });
 
-        await service.processPayPalEvent(headers, rawBody, mockGateway);
+        await service.processPayPalEvent(
+          headers,
+          rawBody,
+          mockGateway as unknown as PayPalGateway
+        );
 
         expect(mockPrisma.order.update).not.toHaveBeenCalled();
         expect(onSettlementDispatch).not.toHaveBeenCalled();
       });
 
       it('handles batch not found for payout event gracefully', async () => {
-        const headers = { 'x-signature': 'valid' };
+        const headers: { 'x-signature': string; } = { 'x-signature': 'valid' };
         const payload: WebhookPayload = {
           id: 'evt-batch-not-found',
           event_type: 'PAYMENT.PAYOUTSBATCH.SUCCESS',
@@ -472,7 +510,7 @@ describe('WebhookService', () => {
             id: 'paypal-batch-missing',
           },
         };
-        const rawBody = JSON.stringify(payload);
+        const rawBody: string = JSON.stringify(payload);
 
         mockGateway.verifyWebhook.mockResolvedValue(true);
         mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
@@ -483,32 +521,40 @@ describe('WebhookService', () => {
           processedAt: new Date(),
         });
 
-        await service.processPayPalEvent(headers, rawBody, mockGateway);
+        await service.processPayPalEvent(
+          headers,
+          rawBody,
+          mockGateway as unknown as PayPalGateway
+        );
 
         expect(mockPrisma.payoutBatch.update).not.toHaveBeenCalled();
       });
 
       it('handles missing paypalOrderId in PAYMENT.CAPTURE.COMPLETED gracefully', async () => {
-        const headers = { 'x-signature': 'valid' };
+        const headers: { 'x-signature': string; } = { 'x-signature': 'valid' };
         const payload: WebhookPayload = {
           id: 'evt-missing-order-id',
           event_type: 'PAYMENT.CAPTURE.COMPLETED',
           resource: {},
         };
-        const rawBody = JSON.stringify(payload);
+        const rawBody: string = JSON.stringify(payload);
 
         mockGateway.verifyWebhook.mockResolvedValue(true);
         mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
         mockPrisma.webhookEvent.create.mockResolvedValue({ id: 'webhook-12' });
         mockPrisma.webhookEvent.update.mockResolvedValue({ id: 'webhook-12' });
 
-        await service.processPayPalEvent(headers, rawBody, mockGateway);
+        await service.processPayPalEvent(
+          headers,
+          rawBody,
+          mockGateway as unknown as PayPalGateway
+        );
 
         expect(mockPrisma.order.findUnique).not.toHaveBeenCalled();
       });
 
       it('rethrows when handleCaptureCompleted encounters a database error', async () => {
-        const headers = { 'x-signature': 'valid' };
+        const headers: { 'x-signature': string; } = { 'x-signature': 'valid' };
         const payload: WebhookPayload = {
           id: 'evt-capture-db-err',
           event_type: 'PAYMENT.CAPTURE.COMPLETED',
@@ -520,7 +566,7 @@ describe('WebhookService', () => {
             },
           },
         };
-        const rawBody = JSON.stringify(payload);
+        const rawBody: string = JSON.stringify(payload);
 
         mockGateway.verifyWebhook.mockResolvedValue(true);
         mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
@@ -528,31 +574,39 @@ describe('WebhookService', () => {
         mockPrisma.order.findUnique.mockRejectedValue(new Error('DB failure'));
 
         await expect(
-          service.processPayPalEvent(headers, rawBody, mockGateway)
+          service.processPayPalEvent(
+            headers,
+            rawBody,
+            mockGateway as unknown as PayPalGateway
+          )
         ).rejects.toThrow('DB failure');
       });
 
       it('handles missing paypalBatchId in PAYMENT.PAYOUTSBATCH.SUCCESS gracefully', async () => {
-        const headers = { 'x-signature': 'valid' };
+        const headers: { 'x-signature': string; } = { 'x-signature': 'valid' };
         const payload: WebhookPayload = {
           id: 'evt-missing-batch-id',
           event_type: 'PAYMENT.PAYOUTSBATCH.SUCCESS',
           resource: {},
         };
-        const rawBody = JSON.stringify(payload);
+        const rawBody: string = JSON.stringify(payload);
 
         mockGateway.verifyWebhook.mockResolvedValue(true);
         mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
         mockPrisma.webhookEvent.create.mockResolvedValue({ id: 'webhook-14' });
         mockPrisma.webhookEvent.update.mockResolvedValue({ id: 'webhook-14' });
 
-        await service.processPayPalEvent(headers, rawBody, mockGateway);
+        await service.processPayPalEvent(
+          headers,
+          rawBody,
+          mockGateway as unknown as PayPalGateway
+        );
 
         expect(mockPrisma.payoutBatch.findUnique).not.toHaveBeenCalled();
       });
 
       it('rethrows when handlePayoutBatchStatusChanged encounters a database error', async () => {
-        const headers = { 'x-signature': 'valid' };
+        const headers: { 'x-signature': string; } = { 'x-signature': 'valid' };
         const payload: WebhookPayload = {
           id: 'evt-payout-db-err',
           event_type: 'PAYMENT.PAYOUTSBATCH.SUCCESS',
@@ -560,7 +614,7 @@ describe('WebhookService', () => {
             id: 'paypal-batch-err',
           },
         };
-        const rawBody = JSON.stringify(payload);
+        const rawBody: string = JSON.stringify(payload);
 
         mockGateway.verifyWebhook.mockResolvedValue(true);
         mockPrisma.webhookEvent.findUnique.mockResolvedValue(null);
@@ -568,17 +622,27 @@ describe('WebhookService', () => {
         mockPrisma.payoutBatch.findUnique.mockRejectedValue(new Error('Payout DB failure'));
 
         await expect(
-          service.processPayPalEvent(headers, rawBody, mockGateway)
+          service.processPayPalEvent(
+            headers,
+            rawBody,
+            mockGateway as unknown as PayPalGateway
+          )
         ).rejects.toThrow('Payout DB failure');
       });
 
       it('covers internal status mapper and unknown payout eventType branches', async () => {
-        const s = service as any;
-        expect(() => s.mapPayPalBatchStatusToPayoutStatus('INVALID')).toThrow(
-          'Unknown payout batch status: INVALID'
-        );
+        const internalService: {
+          mapPayPalBatchStatusToPayoutStatus(status: string): PayoutStatus;
+          handlePayoutBatchStatusChanged(eventType: string, payload: WebhookPayload): Promise<void>;
+        } = service as unknown as {
+          mapPayPalBatchStatusToPayoutStatus(status: string): PayoutStatus;
+          handlePayoutBatchStatusChanged(eventType: string, payload: WebhookPayload): Promise<void>;
+        };
+        expect(() =>
+          internalService.mapPayPalBatchStatusToPayoutStatus('INVALID')
+        ).toThrow('Unknown payout batch status: INVALID');
 
-        await s.handlePayoutBatchStatusChanged('UNKNOWN', {
+        await internalService.handlePayoutBatchStatusChanged('UNKNOWN', {
           id: 'evt-unknown-payout',
           event_type: 'UNKNOWN',
           resource: { id: 'batch-1' },

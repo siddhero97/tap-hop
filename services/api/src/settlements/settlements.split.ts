@@ -15,11 +15,28 @@ import { assertCentInvariant } from '../lib/money.js';
  * Invariant: sum of rows === (totalCents - platformFeeCents)
  */
 export function computeSplit(order: OrderWithItems, vendorEmails: Map<string, string>): SplitRow[] {
+  if (
+    order.subtotalCents < 0 ||
+    order.taxCents < 0 ||
+    order.tipCents < 0 ||
+    order.platformFeeCents < 0 ||
+    order.totalCents < 0
+  ) {
+    throw new Error(`Order amounts cannot be negative for order ${order.id}`);
+  }
+
   const rows: Map<string, SplitRow> = new Map();
-  const venueEmail = vendorEmails.get(order.venueId) || 'venue@example.com';
+  const venueEmail: string = vendorEmails.get(order.venueId) || 'venue@example.com';
 
   // Process line items
   for (const item of order.items) {
+    if (item.lineCents < 0) {
+      throw new Error(`Item lineCents cannot be negative for order ${order.id}`);
+    }
+    if (item.commissionRate < 0 || item.commissionRate > 1) {
+      throw new Error(`Commission rate must be between 0 and 1 for order ${order.id}`);
+    }
+
     if (item.merchantType === MerchantType.PRIMARY_VENUE) {
       // Venue item: 100% to venue
       addOrAccumulate(rows, `venue-${order.venueId}`, {
@@ -30,9 +47,9 @@ export function computeSplit(order: OrderWithItems, vendorEmails: Map<string, st
       });
     } else {
       // Partner item: split between partner and venue
-      const partnerEmail = vendorEmails.get(item.merchantId) || 'unknown@example.com';
-      const partnerCents = Math.floor(item.lineCents * (1 - item.commissionRate));
-      const venueCut = item.lineCents - partnerCents;
+      const partnerEmail: string = vendorEmails.get(item.merchantId) || 'unknown@example.com';
+      const partnerCents: number = Math.floor(item.lineCents * (1 - item.commissionRate));
+      const venueCut: number = item.lineCents - partnerCents;
 
       addOrAccumulate(rows, `partner-${item.merchantId}`, {
         recipientType: RecipientType.PARTNER_MERCHANT,
@@ -61,7 +78,7 @@ export function computeSplit(order: OrderWithItems, vendorEmails: Map<string, st
   // Add tip
   if (order.tipCents > 0) {
     if (order.serverStaffId) {
-      const staffKey = `staff-${order.serverStaffId}`;
+      const staffKey: string = `staff-${order.serverStaffId}`;
       rows.set(staffKey, {
         recipientType: RecipientType.STAFF_TIP,
         staffId: order.serverStaffId,
@@ -78,17 +95,25 @@ export function computeSplit(order: OrderWithItems, vendorEmails: Map<string, st
     }
   }
 
+  // Verify no stakeholder (including platform retained share) receives a negative amount
+  const splitArray: SplitRow[] = Array.from(rows.values());
+  const splitSum: number = splitArray.reduce((sum, row) => sum + row.amountCents, 0);
+  const platformShareCents: number = order.totalCents - splitSum;
+  if (platformShareCents < 0) {
+    throw new Error(
+      `Stakeholder share cannot be negative for order ${order.id}: platform share is ${platformShareCents} cents`
+    );
+  }
+
   // Verify invariant
-  const splitArray = Array.from(rows.values());
-  const splitSum = splitArray.reduce((sum, row) => sum + row.amountCents, 0);
-  const expectedSum = order.totalCents - order.platformFeeCents;
+  const expectedSum: number = order.totalCents - order.platformFeeCents;
   assertCentInvariant(splitSum, expectedSum, `order ${order.id}`);
 
   return splitArray;
 }
 
 function addOrAccumulate(rows: Map<string, SplitRow>, key: string, row: SplitRow): void {
-  const existing = rows.get(key);
+  const existing: SplitRow | undefined = rows.get(key);
   if (existing) {
     existing.amountCents += row.amountCents;
   } else {

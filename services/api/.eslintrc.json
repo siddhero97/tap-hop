@@ -10,11 +10,33 @@
   },
   "rules": {
     "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/typedef": [
+      "error",
+      {
+        "variableDeclaration": true,
+        "variableDeclarationIgnoreFunction": true
+      }
+    ],
     "@typescript-eslint/no-unused-vars": [
       "error",
       {
         "argsIgnorePattern": "^_",
         "varsIgnorePattern": "^_"
+      }
+    ],
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "VariableDeclarator[init.type='AwaitExpression']:not([id.typeAnnotation])",
+        "message": "Variables initialized with 'await' must have an explicit type annotation (e.g., const result: MyDto = await ...)."
+      },
+      {
+        "selector": "AssignmentExpression[right.type='AwaitExpression']",
+        "message": "Assigning 'await' directly to an existing variable is not allowed; declare a typed const first (e.g., const result: MyDto = await ...)."
+      },
+      {
+        "selector": "ReturnStatement:not(:function > BlockStatement > ReturnStatement:last-child)",
+        "message": "Functions must have a single return statement at the end of the function body (no early or nested returns)."
       }
     ]
   },

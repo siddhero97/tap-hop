@@ -22,13 +22,13 @@ export class Decimal {
   }
 
   toFixed(places: number): string {
-    const num = parseFloat(this.value);
+    const num: number = parseFloat(this.value);
     return num.toFixed(places);
   }
 }
 
 // Mock @prisma/client module
-export const mockDecimal = Decimal;
+export const mockDecimal: typeof Decimal = Decimal;
 
 // Mock PrismaClient for integration tests
 const createTableMock = () => ({
@@ -36,6 +36,7 @@ const createTableMock = () => ({
   findMany: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
+  upsert: vi.fn(),
   delete: vi.fn(),
   deleteMany: vi.fn(),
   count: vi.fn(),
@@ -51,6 +52,9 @@ export class PrismaClient {
   item = createTableMock();
   orderItem = createTableMock();
   staff = createTableMock();
+  user = createTableMock();
+  session = createTableMock();
+  platformSettings = createTableMock();
 
   $transaction = vi.fn();
   $queryRaw = vi.fn();
@@ -86,6 +90,15 @@ export enum MerchantType {
   EXTERNAL_PARTNER = 'EXTERNAL_PARTNER',
 }
 
+export enum UserRole {
+  PATRON = 'PATRON',
+  STAFF = 'STAFF',
+  MERCHANT_ADMIN = 'MERCHANT_ADMIN',
+  PLATFORM_SUPPORT = 'PLATFORM_SUPPORT',
+  PLATFORM_FINANCE = 'PLATFORM_FINANCE',
+  PLATFORM_ADMIN = 'PLATFORM_ADMIN',
+}
+
 // Mock @prisma/client before it's imported
 vi.mock('@prisma/client', () => ({
   PrismaClient,
@@ -93,4 +106,5 @@ vi.mock('@prisma/client', () => ({
   OrderStatus,
   PayoutStatus,
   MerchantType,
+  UserRole,
 }));

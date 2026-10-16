@@ -25,7 +25,6 @@ export default defineConfig({
         'src/server.ts',
         'src/app.ts',
         'src/config/env.ts',
-        'src/lib/logger.ts',
         '**/*.config.*',
       ],
     },

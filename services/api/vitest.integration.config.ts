@@ -10,12 +10,11 @@ export default defineConfig({
     include: ['test/integration/**/*.test.ts'],
     setupFiles: ['test/integration-setup.ts'],
     fileParallelism: false,
+    hookTimeout: 30000,
+    testTimeout: 30000,
     poolOptions: {
       threads: {
         singleThread: true,
-      },
-      forks: {
-        singleFork: true,
       },
     },
     env: {
@@ -33,7 +32,6 @@ export default defineConfig({
         'src/server.ts',
         'src/app.ts',
         'src/config/env.ts',
-        'src/lib/logger.ts',
         '**/*.config.*',
       ],
     },

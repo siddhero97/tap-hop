@@ -1,15 +1,15 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach, type Mock } from 'vitest';
 import { PayPalRestGateway } from '../../src/payments/payments.rest-gateway';
 import { PayPalCaptureStatus, PayPalBatchStatus } from '../../src/payments/payments.model';
 
 describe('PayPalRestGateway (mocked)', () => {
   let gateway: PayPalRestGateway;
-  let fetchMock: any;
+  let fetchMock: Mock;
 
   beforeEach(() => {
     gateway = new PayPalRestGateway('test-id', 'test-secret', 'test-webhook-id');
     fetchMock = vi.fn();
-    global.fetch = fetchMock;
+    global.fetch = fetchMock as unknown as typeof fetch;
   });
 
   afterEach(() => {
@@ -31,7 +31,7 @@ describe('PayPalRestGateway (mocked)', () => {
         }),
       });
 
-      const result = await gateway.createOrder({
+      const result: { paypalOrderId: string; approveUrl: string } = await gateway.createOrder({
         referenceId: 'ref-1',
         amountCents: 1000,
         currency: 'USD',
@@ -98,7 +98,7 @@ describe('PayPalRestGateway (mocked)', () => {
         }),
       });
 
-      const result = await gateway.createOrder({
+      const result: { paypalOrderId: string; approveUrl: string } = await gateway.createOrder({
         referenceId: 'ref-1',
         amountCents: 1000,
         currency: 'USD',
@@ -128,7 +128,7 @@ describe('PayPalRestGateway (mocked)', () => {
         currency: 'USD',
       });
 
-      const orderCall = fetchMock.mock.calls[1];
+      const orderCall: [string, { headers: Record<string, string>; body: string }] = fetchMock.mock.calls[1];
       expect(orderCall[1].headers['PayPal-Request-Id']).toBe('order-ref-1');
     });
 
@@ -152,8 +152,8 @@ describe('PayPalRestGateway (mocked)', () => {
         currency: 'USD',
       });
 
-      const orderCall = fetchMock.mock.calls[1];
-      const body = JSON.parse(orderCall[1].body);
+      const orderCall: [string, { headers: Record<string, string>; body: string }] = fetchMock.mock.calls[1];
+      const body: { purchase_units: Array<{ amount: { value: string } }> } = JSON.parse(orderCall[1].body);
       expect(body.purchase_units[0].amount.value).toBe('19.99');
     });
 
@@ -192,7 +192,7 @@ describe('PayPalRestGateway (mocked)', () => {
         }),
       });
 
-      const result = await gateway.createOrder({
+      const result: { paypalOrderId: string; approveUrl: string } = await gateway.createOrder({
         referenceId: 'ref-1',
         amountCents: 1000,
         currency: 'USD',
@@ -229,7 +229,7 @@ describe('PayPalRestGateway (mocked)', () => {
         }),
       });
 
-      const result = await gateway.captureOrder('order-123');
+      const result: { captureId: string; status: PayPalCaptureStatus; amountCents: number } = await gateway.captureOrder('order-123');
 
       expect(result.captureId).toBe('capture-456');
       expect(result.status).toBe(PayPalCaptureStatus.COMPLETED);
@@ -263,7 +263,7 @@ describe('PayPalRestGateway (mocked)', () => {
 
       await gateway.captureOrder('order-123');
 
-      const captureCall = fetchMock.mock.calls[1];
+      const captureCall: [string, { headers: Record<string, string>; body: string }] = fetchMock.mock.calls[1];
       expect(captureCall[1].headers['PayPal-Request-Id']).toBe('capture-order-123');
     });
 
@@ -292,7 +292,7 @@ describe('PayPalRestGateway (mocked)', () => {
         }),
       });
 
-      const result = await gateway.captureOrder('order-123');
+      const result: { captureId: string; status: PayPalCaptureStatus; amountCents: number } = await gateway.captureOrder('order-123');
 
       expect(result.amountCents).toBe(1999);
     });
@@ -322,7 +322,7 @@ describe('PayPalRestGateway (mocked)', () => {
         }),
       });
 
-      const result = await gateway.captureOrder('order-123');
+      const result: { captureId: string; status: PayPalCaptureStatus; amountCents: number } = await gateway.captureOrder('order-123');
 
       expect(result.status).toBe(PayPalCaptureStatus.PENDING);
     });
@@ -357,7 +357,7 @@ describe('PayPalRestGateway (mocked)', () => {
         }),
       });
 
-      const result = await gateway.captureOrder('order-123');
+      const result: { captureId: string; status: PayPalCaptureStatus; amountCents: number } = await gateway.captureOrder('order-123');
 
       expect(result.captureId).toBe('');
       expect(result.status).toBe(PayPalCaptureStatus.PENDING);
@@ -382,7 +382,7 @@ describe('PayPalRestGateway (mocked)', () => {
         }),
       });
 
-      const result = await gateway.createPayoutBatch({
+      const result: { paypalBatchId: string; status: PayPalBatchStatus } = await gateway.createPayoutBatch({
         sender_batch_header: {
           sender_batch_id: 'batch-123',
           email_subject: 'Test Payout',
@@ -428,7 +428,7 @@ describe('PayPalRestGateway (mocked)', () => {
         items: [],
       });
 
-      const payoutCall = fetchMock.mock.calls[1];
+      const payoutCall: [string, { headers: Record<string, string>; body: string }] = fetchMock.mock.calls[1];
       expect(payoutCall[1].headers['PayPal-Request-Id']).toBe('batch-123');
     });
 
@@ -472,7 +472,7 @@ describe('PayPalRestGateway (mocked)', () => {
         }),
       });
 
-      const result = await gateway.createPayoutBatch({
+      const result: { paypalBatchId: string; status: PayPalBatchStatus } = await gateway.createPayoutBatch({
         sender_batch_header: {
           sender_batch_id: 'batch-124',
           email_subject: 'Test Payout',
@@ -483,6 +483,70 @@ describe('PayPalRestGateway (mocked)', () => {
 
       expect(result.paypalBatchId).toBe('batch-790');
       expect(result.status).toBe(PayPalBatchStatus.PENDING);
+    });
+
+    it('rejects payout items with zero or negative amount without calling fetch', async () => {
+      await expect(
+        gateway.createPayoutBatch({
+          sender_batch_header: {
+            sender_batch_id: 'batch-neg',
+            email_subject: 'Test Payout',
+            email_message: 'Here is your payout',
+          },
+          items: [
+            {
+              recipient_type: 'EMAIL',
+              amount: { value: '-25.00', currency: 'USD' },
+              receiver: 'test@example.com',
+              note: 'Negative',
+              sender_item_id: 'item-1',
+            },
+          ],
+        })
+      ).rejects.toThrow('Payout item amount must be positive');
+
+      await expect(
+        gateway.createPayoutBatch({
+          sender_batch_header: {
+            sender_batch_id: 'batch-zero',
+            email_subject: 'Test Payout',
+            email_message: 'Here is your payout',
+          },
+          items: [
+            {
+              recipient_type: 'EMAIL',
+              amount: { value: '0.00', currency: 'USD' },
+              receiver: 'test@example.com',
+              note: 'Zero',
+              sender_item_id: 'item-1',
+            },
+          ],
+        })
+      ).rejects.toThrow('Payout item amount must be positive');
+
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('createOrder negative/zero validation', () => {
+    it('rejects zero or negative amountCents without calling fetch', async () => {
+      await expect(
+        gateway.createOrder({
+          referenceId: 'ref-zero',
+          amountCents: 0,
+          currency: 'USD',
+        })
+      ).rejects.toThrow('Order amountCents must be positive');
+
+      await expect(
+        gateway.createOrder({
+          referenceId: 'ref-neg',
+          amountCents: -100,
+          currency: 'USD',
+        })
+      ).rejects.toThrow('Order amountCents must be positive');
+
+      expect(fetchMock).not.toHaveBeenCalled();
     });
   });
 
@@ -498,7 +562,7 @@ describe('PayPalRestGateway (mocked)', () => {
         json: async () => ({ verification_status: 'SUCCESS' }),
       });
 
-      const result = await gateway.verifyWebhook(
+      const result: boolean = await gateway.verifyWebhook(
         {
           'paypal-transmission-id': 'trans-123',
           'paypal-transmission-time': '2024-01-01T00:00:00Z',
@@ -523,7 +587,7 @@ describe('PayPalRestGateway (mocked)', () => {
         json: async () => ({ verification_status: 'FAILURE' }),
       });
 
-      const result = await gateway.verifyWebhook(
+      const result: boolean = await gateway.verifyWebhook(
         {
           'paypal-transmission-id': 'trans-123',
           'paypal-transmission-time': '2024-01-01T00:00:00Z',
@@ -559,8 +623,8 @@ describe('PayPalRestGateway (mocked)', () => {
         '{"event_type":"PAYMENT.SALE.COMPLETED"}'
       );
 
-      const verifyCall = fetchMock.mock.calls[1];
-      const body = JSON.parse(verifyCall[1].body);
+      const verifyCall: [string, { headers: Record<string, string>; body: string }] = fetchMock.mock.calls[1];
+      const body: { transmission_id: string; webhook_id: string } = JSON.parse(verifyCall[1].body);
       expect(body.transmission_id).toBe('trans-123');
       expect(body.webhook_id).toBe('test-webhook-id');
     });
@@ -621,14 +685,14 @@ describe('PayPalRestGateway (mocked)', () => {
       });
 
       // First operation
-      const orderResult = await gateway.createOrder({
+      const orderResult: { paypalOrderId: string; approveUrl: string } = await gateway.createOrder({
         referenceId: 'ref-1',
         amountCents: 1000,
         currency: 'USD',
       });
 
       // Second operation should reuse token
-      const captureResult = await gateway.captureOrder(orderResult.paypalOrderId);
+      const captureResult: { captureId: string; status: PayPalCaptureStatus; amountCents: number } = await gateway.captureOrder(orderResult.paypalOrderId);
 
       expect(captureResult.captureId).toBe('capture-456');
       expect(captureResult.status).toBe(PayPalCaptureStatus.COMPLETED);

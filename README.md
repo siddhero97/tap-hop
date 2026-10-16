@@ -24,3 +24,5 @@ Patron → [Express API] → [Postgres] ↔ [PayPal Orders + Payouts]
 - API: docs/api/openapi.json
 - Architecture: docs/decisions/
 - Postman: docs/api/tabhop.postman_collection.json
+- Roadmap / TODOs: TODO.md
+

@@ -22,31 +22,30 @@ export class PayPalRestGateway implements PayPalGateway {
   }
 
   private async getToken(): Promise<string> {
-    if (this.token && this.token.expiresAt > Date.now()) {
-      return this.token.value;
+    if (!this.token || this.token.expiresAt <= Date.now()) {
+      const auth: string = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString(
+        'base64'
+      );
+      const response: Response = await fetch(`${this.baseUrl}/v1/oauth2/token`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${auth}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'grant_type=client_credentials',
+      });
+
+      if (!response.ok) {
+        throw new Error(`PayPal auth failed: ${response.statusText}`);
+      }
+
+      const data: { access_token: string; expires_in: number } = (await response.json()) as { access_token: string; expires_in: number };
+      this.token = {
+        value: data.access_token,
+        expiresAt: Date.now() + (data.expires_in - 60) * 1000,
+      };
     }
 
-    const auth = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString(
-      'base64'
-    );
-    const response = await fetch(`${this.baseUrl}/v1/oauth2/token`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${auth}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: 'grant_type=client_credentials',
-    });
-
-    if (!response.ok) {
-      throw new Error(`PayPal auth failed: ${response.statusText}`);
-    }
-
-    const data = (await response.json()) as { access_token: string; expires_in: number };
-    this.token = {
-      value: data.access_token,
-      expiresAt: Date.now() + (data.expires_in - 60) * 1000,
-    };
     return this.token.value;
   }
 
@@ -55,8 +54,11 @@ export class PayPalRestGateway implements PayPalGateway {
     amountCents: number;
     currency: string;
   }): Promise<{ paypalOrderId: string; approveUrl: string }> {
-    const token = await this.getToken();
-    const response = await fetch(`${this.baseUrl}/v2/checkout/orders`, {
+    if (input.amountCents <= 0) {
+      throw new Error('Order amountCents must be positive');
+    }
+    const token: string = await this.getToken();
+    const response: Response = await fetch(`${this.baseUrl}/v2/checkout/orders`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -82,8 +84,8 @@ export class PayPalRestGateway implements PayPalGateway {
       throw new Error(`PayPal createOrder failed: ${response.statusText}`);
     }
 
-    const data = (await response.json()) as { id: string; links: Array<{ rel: string; href: string }> };
-    const approveLink = data.links.find((l) => l.rel === 'approve');
+    const data: { id: string; links: Array<{ rel: string; href: string }> } = (await response.json()) as { id: string; links: Array<{ rel: string; href: string }> };
+    const approveLink: { rel: string; href: string; } | undefined = data.links.find((l) => l.rel === 'approve');
     return {
       paypalOrderId: data.id,
       approveUrl: approveLink?.href || '',
@@ -95,8 +97,8 @@ export class PayPalRestGateway implements PayPalGateway {
     status: PayPalCaptureStatus;
     amountCents: number;
   }> {
-    const token = await this.getToken();
-    const response = await fetch(
+    const token: string = await this.getToken();
+    const response: Response = await fetch(
       `${this.baseUrl}/v2/checkout/orders/${paypalOrderId}/capture`,
       {
         method: 'POST',
@@ -114,10 +116,12 @@ export class PayPalRestGateway implements PayPalGateway {
       throw new Error(`PayPal captureOrder failed: ${response.statusText}`);
     }
 
-    const data = (await response.json()) as {
+    const data: {
+      purchase_units: Array<{ payments: { captures: Array<{ id: string; status: string; amount: { value: string } }> } }>;
+    } = (await response.json()) as {
       purchase_units: Array<{ payments: { captures: Array<{ id: string; status: string; amount: { value: string } }> } }>;
     };
-    const capture = data.purchase_units[0]?.payments?.captures?.[0];
+    const capture: { id: string; status: string; amount: { value: string; }; } = data.purchase_units[0]?.payments?.captures?.[0];
     return {
       captureId: capture?.id || '',
       status: (capture?.status as PayPalCaptureStatus) || PayPalCaptureStatus.PENDING,
@@ -129,8 +133,11 @@ export class PayPalRestGateway implements PayPalGateway {
     paypalBatchId: string;
     status: PayPalBatchStatus;
   }> {
-    const token = await this.getToken();
-    const response = await fetch(`${this.baseUrl}/v1/payments/payouts`, {
+    if (req.items.some((item) => !(parseFloat(item.amount.value) > 0))) {
+      throw new Error('Payout item amount must be positive');
+    }
+    const token: string = await this.getToken();
+    const response: Response = await fetch(`${this.baseUrl}/v1/payments/payouts`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -145,7 +152,7 @@ export class PayPalRestGateway implements PayPalGateway {
       throw new Error(`PayPal createPayoutBatch failed: ${response.statusText}`);
     }
 
-    const data = (await response.json()) as { batch_header: { payout_batch_id: string; batch_status: string } };
+    const data: { batch_header: { payout_batch_id: string; batch_status: string } } = (await response.json()) as { batch_header: { payout_batch_id: string; batch_status: string } };
     return {
       paypalBatchId: data.batch_header.payout_batch_id,
       status: (data.batch_header.batch_status as PayPalBatchStatus) || PayPalBatchStatus.PENDING,
@@ -156,8 +163,8 @@ export class PayPalRestGateway implements PayPalGateway {
     headers: Record<string, string>,
     rawBody: string
   ): Promise<boolean> {
-    const token = await this.getToken();
-    const response = await fetch(
+    const token: string = await this.getToken();
+    const response: Response = await fetch(
       `${this.baseUrl}/v1/notifications/verify-webhook-signature`,
       {
         method: 'POST',
@@ -177,7 +184,7 @@ export class PayPalRestGateway implements PayPalGateway {
       }
     );
 
-    const data = (await response.json()) as { verification_status: string };
+    const data: { verification_status: string } = (await response.json()) as { verification_status: string };
     return data.verification_status === 'SUCCESS';
   }
 }

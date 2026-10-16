@@ -3,6 +3,8 @@ import { requestIdMiddleware } from './middleware/request-id.js';
 import { authMiddleware } from './middleware/auth.js';
 import { errorHandlerMiddleware } from './middleware/error-handler.js';
 import { healthRouter } from './health/health.routes.js';
+import { authRouter } from './auth/auth.routes.js';
+import { adminRouter } from './admin/admin.routes.js';
 import { catalogRouter } from './catalog/catalog.routes.js';
 import { ordersRouter } from './orders/orders.routes.js';
 import { paymentsRouter } from './payments/payments.routes.js';
@@ -13,7 +15,7 @@ import { webhooksRouter } from './webhooks/webhooks.routes.js';
  * Create and configure Express application with middleware and routes
  */
 export function createApp(): Express.Application {
-  const app = Express();
+  const app: Express.Application = Express();
 
   // Middleware (in order)
   app.use(requestIdMiddleware);
@@ -28,6 +30,8 @@ export function createApp(): Express.Application {
 
   // Routes
   app.use('/health', healthRouter);
+  app.use('/auth', authRouter);
+  app.use('/admin', adminRouter);
   app.use('/catalog', catalogRouter);
   app.use('/orders', ordersRouter);
   app.use('/orders', paymentsRouter);
@@ -41,3 +45,4 @@ export function createApp(): Express.Application {
 }
 
 export default createApp;
+

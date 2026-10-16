@@ -1,19 +1,27 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import request from 'supertest';
+import type { Request, Response } from 'express';
+import request, { type Response as SupertestResponse } from 'supertest';
 import { prisma } from '@tabhop/database';
 import { createApp } from '../../src/app.js';
+import { handlePayPalWebhook } from '../../src/webhooks/webhooks.controller.js';
 import { WebhookService } from '../../src/webhooks/webhooks.service.js';
 import * as webhooksService from '../../src/webhooks/webhooks.service.js';
 import { FakePayPalGateway } from '../../src/payments/payments.fake-gateway.js';
 import { SettlementService } from '../../src/settlements/settlements.service.js';
+import {
+  createTestMerchant,
+  findTestWebhookEventByEventId,
+  findTestWebhookEventsByEventId,
+  type WebhookEventTestRecordDto,
+} from '../helpers/test-db.repository.js';
 
 // Create Express app for testing
 function createTestApp() {
-  const app = createApp();
+  const app: ReturnType<typeof createApp> = createApp();
 
-  const gateway = new FakePayPalGateway();
-  const webhookService = new WebhookService(prisma);
-  const settlementService = new SettlementService(gateway);
+  const gateway: FakePayPalGateway = new FakePayPalGateway();
+  const webhookService: WebhookService = new WebhookService(prisma);
+  const settlementService: SettlementService = new SettlementService(gateway);
 
   app.locals.gateway = gateway;
   app.locals.webhookService = webhookService;
@@ -30,18 +38,16 @@ describe('Webhooks Routes', () => {
     app = createTestApp();
 
     // Create test venue
-    await prisma.merchant.create({
-      data: {
-        businessName: 'Test Venue',
-        merchantType: 'PRIMARY_VENUE',
-        paypalEmail: 'venue@example.com',
-      },
+    await createTestMerchant({
+      businessName: 'Test Venue',
+      merchantType: 'PRIMARY_VENUE',
+      paypalEmail: 'venue@example.com',
     });
   });
 
   describe('POST /webhooks/paypal', () => {
     it('should process valid webhook event and return 200', async () => {
-      const payload = {
+      const payload: { id: string; event_type: string; resource: { id: string; status: string; supplementary_data: { related_ids: { order_id: string; }; }; }; } = {
         id: 'WH-EVENT-001',
         event_type: 'PAYMENT.CAPTURE.COMPLETED',
         resource: {
@@ -55,7 +61,7 @@ describe('Webhooks Routes', () => {
         },
       };
 
-      const response = await request(app)
+      const response: SupertestResponse = await request(app)
         .post('/webhooks/paypal')
         .send(payload)
         .set('Content-Type', 'application/json')
@@ -65,16 +71,15 @@ describe('Webhooks Routes', () => {
       expect(response.body.status).toBe('success');
 
       // Verify webhook event was stored
-      const webhookEvent = await prisma.webhookEvent.findUnique({
-        where: { eventId: 'WH-EVENT-001' },
-      });
+      const webhookEvent: WebhookEventTestRecordDto | null =
+        await findTestWebhookEventByEventId('WH-EVENT-001');
       expect(webhookEvent).not.toBeNull();
       expect(webhookEvent?.eventType).toBe('PAYMENT.CAPTURE.COMPLETED');
     });
 
     it('should always return 200 (PayPal expects this)', async () => {
       // Even with invalid payload, return 200
-      const response = await request(app)
+      const response: SupertestResponse = await request(app)
         .post('/webhooks/paypal')
         .send({})
         .set('Content-Type', 'application/json');
@@ -84,7 +89,7 @@ describe('Webhooks Routes', () => {
     });
 
     it('should handle empty webhook gracefully', async () => {
-      const response = await request(app)
+      const response: SupertestResponse = await request(app)
         .post('/webhooks/paypal')
         .send('')
         .set('Content-Type', 'application/json');
@@ -94,7 +99,7 @@ describe('Webhooks Routes', () => {
     });
 
     it('should prevent replay attacks', async () => {
-      const payload = {
+      const payload: { id: string; event_type: string; resource: { id: string; status: string; supplementary_data: { related_ids: { order_id: string; }; }; }; } = {
         id: 'WH-EVENT-002',
         event_type: 'PAYMENT.CAPTURE.COMPLETED',
         resource: {
@@ -109,14 +114,14 @@ describe('Webhooks Routes', () => {
       };
 
       // Send same event twice
-      const response1 = await request(app)
+      const response1: SupertestResponse = await request(app)
         .post('/webhooks/paypal')
         .send(payload)
         .set('Content-Type', 'application/json');
 
       expect(response1.status).toBe(200);
 
-      const response2 = await request(app)
+      const response2: SupertestResponse = await request(app)
         .post('/webhooks/paypal')
         .send(payload)
         .set('Content-Type', 'application/json');
@@ -124,14 +129,13 @@ describe('Webhooks Routes', () => {
       expect(response2.status).toBe(200);
 
       // Should only have one event in database (replay protection)
-      const events = await prisma.webhookEvent.findMany({
-        where: { eventId: 'WH-EVENT-002' },
-      });
+      const events: WebhookEventTestRecordDto[] =
+        await findTestWebhookEventsByEventId('WH-EVENT-002');
       expect(events.length).toBe(1);
     });
 
     it('should record webhook event in database', async () => {
-      const payload = {
+      const payload: { id: string; event_type: string; resource: { id: string; status: string; }; } = {
         id: 'WH-EVENT-003',
         event_type: 'PAYMENT.CAPTURE.COMPLETED',
         resource: {
@@ -140,7 +144,7 @@ describe('Webhooks Routes', () => {
         },
       };
 
-      const response = await request(app)
+      const response: SupertestResponse = await request(app)
         .post('/webhooks/paypal')
         .send(payload)
         .set('Content-Type', 'application/json')
@@ -148,9 +152,8 @@ describe('Webhooks Routes', () => {
 
       expect(response.status).toBe(200);
 
-      const event = await prisma.webhookEvent.findUnique({
-        where: { eventId: 'WH-EVENT-003' },
-      });
+      const event: WebhookEventTestRecordDto | null =
+        await findTestWebhookEventByEventId('WH-EVENT-003');
 
       expect(event).toBeDefined();
       expect(event?.provider).toBe('paypal');
@@ -159,7 +162,7 @@ describe('Webhooks Routes', () => {
     });
 
     it('should handle unknown event types gracefully', async () => {
-      const payload = {
+      const payload: { id: string; event_type: string; resource: { id: string; }; } = {
         id: 'WH-EVENT-004',
         event_type: 'UNKNOWN.EVENT.TYPE',
         resource: {
@@ -167,7 +170,7 @@ describe('Webhooks Routes', () => {
         },
       };
 
-      const response = await request(app)
+      const response: SupertestResponse = await request(app)
         .post('/webhooks/paypal')
         .send(payload)
         .set('Content-Type', 'application/json')
@@ -176,14 +179,13 @@ describe('Webhooks Routes', () => {
       expect(response.status).toBe(200);
 
       // Event should still be recorded
-      const event = await prisma.webhookEvent.findUnique({
-        where: { eventId: 'WH-EVENT-004' },
-      });
+      const event: WebhookEventTestRecordDto | null =
+        await findTestWebhookEventByEventId('WH-EVENT-004');
       expect(event).toBeDefined();
     });
 
     it('should handle payout batch status changes', async () => {
-      const payload = {
+      const payload: { id: string; event_type: string; resource: { id: string; status: string; }; } = {
         id: 'WH-EVENT-005',
         event_type: 'PAYMENT.PAYOUTSBATCH.SUCCESS',
         resource: {
@@ -192,7 +194,7 @@ describe('Webhooks Routes', () => {
         },
       };
 
-      const response = await request(app)
+      const response: SupertestResponse = await request(app)
         .post('/webhooks/paypal')
         .send(payload)
         .set('Content-Type', 'application/json')
@@ -201,15 +203,14 @@ describe('Webhooks Routes', () => {
       expect(response.status).toBe(200);
 
       // Event should be recorded
-      const event = await prisma.webhookEvent.findUnique({
-        where: { eventId: 'WH-EVENT-005' },
-      });
+      const event: WebhookEventTestRecordDto | null =
+        await findTestWebhookEventByEventId('WH-EVENT-005');
       expect(event).toBeDefined();
       expect(event?.eventType).toBe('PAYMENT.PAYOUTSBATCH.SUCCESS');
     });
 
     it('should mark event as processed after successful handling', async () => {
-      const payload = {
+      const payload: { id: string; event_type: string; resource: { id: string; status: string; }; } = {
         id: 'WH-EVENT-006',
         event_type: 'PAYMENT.CAPTURE.COMPLETED',
         resource: {
@@ -218,7 +219,7 @@ describe('Webhooks Routes', () => {
         },
       };
 
-      const response = await request(app)
+      const response: SupertestResponse = await request(app)
         .post('/webhooks/paypal')
         .send(payload)
         .set('Content-Type', 'application/json');
@@ -226,9 +227,8 @@ describe('Webhooks Routes', () => {
       expect(response.status).toBe(200);
 
       // Check if event was marked as processed
-      const event = await prisma.webhookEvent.findUnique({
-        where: { eventId: 'WH-EVENT-006' },
-      });
+      const event: WebhookEventTestRecordDto | null =
+        await findTestWebhookEventByEventId('WH-EVENT-006');
 
       // Note: processedAt may or may not be set depending on webhook service implementation
       // This is just checking it was recorded
@@ -236,7 +236,7 @@ describe('Webhooks Routes', () => {
     });
 
     it('should handle missing event ID gracefully', async () => {
-      const payload = {
+      const payload: { event_type: string; resource: { id: string; }; } = {
         // Missing id field
         event_type: 'PAYMENT.CAPTURE.COMPLETED',
         resource: {
@@ -244,7 +244,7 @@ describe('Webhooks Routes', () => {
         },
       };
 
-      const response = await request(app)
+      const response: SupertestResponse = await request(app)
         .post('/webhooks/paypal')
         .send(payload)
         .set('Content-Type', 'application/json');
@@ -254,7 +254,7 @@ describe('Webhooks Routes', () => {
     });
 
     it('should handle missing event type gracefully', async () => {
-      const payload = {
+      const payload: { id: string; resource: { id: string; }; } = {
         id: 'WH-EVENT-008',
         // Missing event_type
         resource: {
@@ -262,7 +262,7 @@ describe('Webhooks Routes', () => {
         },
       };
 
-      const response = await request(app)
+      const response: SupertestResponse = await request(app)
         .post('/webhooks/paypal')
         .send(payload)
         .set('Content-Type', 'application/json');
@@ -276,13 +276,34 @@ describe('Webhooks Routes', () => {
         new Error('Fatal webhook error')
       );
 
-      const response = await request(app)
+      const response: SupertestResponse = await request(app)
         .post('/webhooks/paypal')
         .send({ id: 'WH-EVENT-009', event_type: 'PAYMENT.CAPTURE.COMPLETED' })
         .set('Content-Type', 'application/json');
 
       expect(response.status).toBe(200);
       expect(response.body.code).toBe('INTERNAL_ERROR');
+    });
+
+    it('should fall back to JSON.stringify(req.body) when req.rawBody is not populated', async () => {
+      const jsonSpy: ReturnType<typeof vi.fn> = vi.fn();
+      const statusSpy: ReturnType<typeof vi.fn> = vi.fn().mockReturnValue({ json: jsonSpy });
+      const reqWithoutRawBody: Request = {
+        app,
+        headers: { 'content-type': 'application/json', 'x-fake-signature': 'ok' },
+        body: {
+          id: 'WH-EVENT-FALLBACK-010',
+          event_type: 'UNKNOWN.EVENT',
+        },
+      } as unknown as Request;
+      const mockResponse: Response = {
+        status: statusSpy,
+      } as unknown as Response;
+
+      await handlePayPalWebhook(reqWithoutRawBody, mockResponse);
+
+      expect(statusSpy).toHaveBeenCalledWith(200);
+      expect(jsonSpy).toHaveBeenCalledWith({ status: 'success' });
     });
   });
 });

@@ -15,7 +15,7 @@ import { prisma } from '@tabhop/database';
 async function main(): Promise<void> {
   try {
     // Create Express application
-    const app = createApp();
+    const app: ReturnType<typeof createApp> = createApp();
 
     // Initialize payment gateway based on configuration
     let gateway: PayPalGateway;
@@ -32,8 +32,8 @@ async function main(): Promise<void> {
     }
 
     // Initialize services
-    const settlementService = new SettlementService(gateway);
-    const webhookService = new WebhookService(prisma);
+    const settlementService: SettlementService = new SettlementService(gateway);
+    const webhookService: WebhookService = new WebhookService(prisma);
 
     registerServices(app, {
       gateway,

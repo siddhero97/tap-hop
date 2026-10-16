@@ -1,4 +1,9 @@
-import { MerchantType } from '@tabhop/database';
+import {
+  MerchantType,
+  OrderStatus as PrismaOrderStatus,
+  PayoutStatus,
+} from '@tabhop/database';
+import { Decimal } from '@prisma/client/runtime/library';
 
 export enum OrderStatus {
   PENDING = 'PENDING',
@@ -37,4 +42,76 @@ export interface SplitRow {
   staffId?: string;
   receiverEmail: string;
   amountCents: number;
+}
+
+/**
+ * Database record DTOs for Orders module.
+ */
+
+export interface OrderRecordDto {
+  id: string;
+  venueId: string;
+  serverStaffId: string | null;
+  tableNumber: string | null;
+  status: PrismaOrderStatus;
+  paypalOrderId: string | null;
+  paypalCaptureId: string | null;
+  subtotalAmount: Decimal;
+  taxAmount: Decimal;
+  tipAmount: Decimal;
+  platformFeeAmount: Decimal;
+  totalAmount: Decimal;
+  currency: string;
+  idempotencyKey: string | null;
+  capturedAt: Date | null;
+  createdAt: Date;
+}
+
+export interface OrderItemWithItemRecordDto {
+  id: string;
+  orderId: string;
+  itemId: string;
+  quantity: number;
+  unitPrice: Decimal;
+  item: {
+    id: string;
+    name: string;
+    price: Decimal;
+    isActive: boolean;
+    merchantId: string;
+  };
+}
+
+export interface OrderWithItemsRecordDto extends OrderRecordDto {
+  items: OrderItemWithItemRecordDto[];
+}
+
+export interface OrderWithDetailsRecordDto extends OrderWithItemsRecordDto {
+  payoutBatch: {
+    id: string;
+    paypalBatchId: string | null;
+    status: PayoutStatus;
+  } | null;
+}
+
+export interface CatalogItemWithMerchantRecordDto {
+  id: string;
+  name: string;
+  price: Decimal;
+  isActive: boolean;
+  merchantId: string;
+  merchant: {
+    id: string;
+    merchantType: MerchantType;
+  };
+}
+
+export interface VenueRecordDto {
+  id: string;
+  merchantType: MerchantType;
+}
+
+export interface StaffRecordDto {
+  id: string;
+  venueId: string;
 }

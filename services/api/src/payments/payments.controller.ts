@@ -3,6 +3,7 @@ import {
   createPayPalOrderForOrder,
   captureOrderAndSettle,
   markOrderFailed,
+  type CaptureAndSettleResult,
 } from './payments.service.js';
 import { getServices } from '../lib/app-services.js';
 import { sendServiceError } from '../lib/service-error.js';
@@ -15,22 +16,21 @@ import { logger } from '../lib/logger.js';
 export async function createPayPalOrder(req: Request, res: Response): Promise<void> {
   try {
     const { gateway } = getServices(req);
-    const { created, paypalOrderId, approveUrl } = await createPayPalOrderForOrder(
+    const { created, paypalOrderId, approveUrl }: { created: boolean; paypalOrderId: string; approveUrl: string } = await createPayPalOrderForOrder(
       gateway,
       req.params.id
     );
     res.status(created ? 201 : 200).json({ status: 'success', paypalOrderId, approveUrl });
   } catch (error) {
-    if (sendServiceError(res, error)) {
-      return;
+    if (!sendServiceError(res, error)) {
+      logger.error({ error: String(error), orderId: req.params.id }, 'Error creating PayPal order');
+      res.status(400).json({
+        status: 'error',
+        code: 'PAYMENT_GATEWAY_ERROR',
+        message: 'Failed to create PayPal order',
+        details: (error as Error).message,
+      });
     }
-    logger.error({ error: String(error), orderId: req.params.id }, 'Error creating PayPal order');
-    res.status(400).json({
-      status: 'error',
-      code: 'PAYMENT_GATEWAY_ERROR',
-      message: 'Failed to create PayPal order',
-      details: (error as Error).message,
-    });
   }
 }
 
@@ -40,19 +40,18 @@ export async function createPayPalOrder(req: Request, res: Response): Promise<vo
 export async function capturePayPalOrder(req: Request, res: Response): Promise<void> {
   try {
     const { gateway, settlementService } = getServices(req);
-    const body = await captureOrderAndSettle(gateway, settlementService, req.params.id);
+    const body: CaptureAndSettleResult = await captureOrderAndSettle(gateway, settlementService, req.params.id);
     res.status(200).json(body);
   } catch (error) {
-    if (sendServiceError(res, error)) {
-      return;
+    if (!sendServiceError(res, error)) {
+      await markOrderFailed(req.params.id);
+      logger.error({ error: String(error), orderId: req.params.id }, 'Error capturing PayPal order');
+      res.status(400).json({
+        status: 'error',
+        code: 'PAYMENT_CAPTURE_FAILED',
+        message: 'Failed to capture PayPal order',
+        details: (error as Error).message,
+      });
     }
-    await markOrderFailed(req.params.id);
-    logger.error({ error: String(error), orderId: req.params.id }, 'Error capturing PayPal order');
-    res.status(400).json({
-      status: 'error',
-      code: 'PAYMENT_CAPTURE_FAILED',
-      message: 'Failed to capture PayPal order',
-      details: (error as Error).message,
-    });
   }
 }

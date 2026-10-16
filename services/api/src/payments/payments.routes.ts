@@ -3,6 +3,7 @@ import { validateMiddleware } from '../middleware/validate.js';
 import { OrderIdParamsSchema } from './payments.validator.js';
 import { createPayPalOrder, capturePayPalOrder } from './payments.controller.js';
 
+// TODO(microservice): Move payment routes to a standalone Payment Microservice at a later date.
 const router: Router = Router({ mergeParams: true });
 
 /**

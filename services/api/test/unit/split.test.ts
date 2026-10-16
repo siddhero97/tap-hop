@@ -9,7 +9,7 @@ vi.mock('@tabhop/database', () => ({
 }));
 
 import { computeSplit } from '../../src/settlements/settlements.split';
-import { RecipientType, type OrderWithItems } from '../../src/orders/orders.model';
+import { RecipientType, type OrderWithItems, type SplitRow } from '../../src/orders/orders.model';
 
 describe('settlement split', () => {
   describe('computeSplit', () => {
@@ -32,8 +32,8 @@ describe('settlement split', () => {
         ],
       };
 
-      const vendorEmails = new Map([['venue-1', 'venue@example.com']]);
-      const result = computeSplit(order, vendorEmails);
+      const vendorEmails: Map<string, string> = new Map([['venue-1', 'venue@example.com']]);
+      const result: SplitRow[] = computeSplit(order, vendorEmails);
 
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({
@@ -44,7 +44,7 @@ describe('settlement split', () => {
       });
 
       // Invariant: sum should equal total - platformFee
-      const sum = result.reduce((s, r) => s + r.amountCents, 0);
+      const sum: number = result.reduce((s, r) => s + r.amountCents, 0);
       expect(sum).toBe(order.totalCents - order.platformFeeCents);
     });
 
@@ -73,17 +73,17 @@ describe('settlement split', () => {
         ],
       };
 
-      const vendorEmails = new Map([
+      const vendorEmails: Map<string, string> = new Map([
         ['venue-1', 'venue@example.com'],
         ['partner-1', 'partner@example.com'],
       ]);
-      const result = computeSplit(order, vendorEmails);
+      const result: SplitRow[] = computeSplit(order, vendorEmails);
 
       // Should have venue and partner rows
       expect(result).toHaveLength(2);
 
-      const venueRow = result.find(r => r.merchantId === 'venue-1');
-      const partnerRow = result.find(r => r.merchantId === 'partner-1');
+      const venueRow: SplitRow | undefined = result.find(r => r.merchantId === 'venue-1');
+      const partnerRow: SplitRow | undefined = result.find(r => r.merchantId === 'partner-1');
 
       expect(venueRow).toBeDefined();
       expect(partnerRow).toBeDefined();
@@ -94,7 +94,7 @@ describe('settlement split', () => {
       expect(venueRow?.amountCents).toBe(1260);
 
       // Invariant check
-      const sum = result.reduce((s, r) => s + r.amountCents, 0);
+      const sum: number = result.reduce((s, r) => s + r.amountCents, 0);
       expect(sum).toBe(order.totalCents - order.platformFeeCents);
     });
 
@@ -118,17 +118,17 @@ describe('settlement split', () => {
         ],
       };
 
-      const vendorEmails = new Map([
+      const vendorEmails: Map<string, string> = new Map([
         ['venue-1', 'venue@example.com'],
         ['staff-1', 'staff@example.com'],
       ]);
-      const result = computeSplit(order, vendorEmails);
+      const result: SplitRow[] = computeSplit(order, vendorEmails);
 
       // Should have venue and staff rows
       expect(result).toHaveLength(2);
 
-      const staffRow = result.find(r => r.staffId === 'staff-1');
-      const venueRow = result.find(r => r.merchantId === 'venue-1');
+      const staffRow: SplitRow | undefined = result.find(r => r.staffId === 'staff-1');
+      const venueRow: SplitRow | undefined = result.find(r => r.merchantId === 'venue-1');
 
       expect(staffRow).toEqual({
         recipientType: RecipientType.STAFF_TIP,
@@ -140,7 +140,7 @@ describe('settlement split', () => {
       expect(venueRow?.amountCents).toBe(1080); // 1000 + 80 tax
 
       // Invariant check
-      const sum = result.reduce((s, r) => s + r.amountCents, 0);
+      const sum: number = result.reduce((s, r) => s + r.amountCents, 0);
       expect(sum).toBe(order.totalCents - order.platformFeeCents);
     });
 
@@ -164,8 +164,8 @@ describe('settlement split', () => {
         ],
       };
 
-      const vendorEmails = new Map([['venue-1', 'venue@example.com']]);
-      const result = computeSplit(order, vendorEmails);
+      const vendorEmails: Map<string, string> = new Map([['venue-1', 'venue@example.com']]);
+      const result: SplitRow[] = computeSplit(order, vendorEmails);
 
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({
@@ -176,7 +176,7 @@ describe('settlement split', () => {
       });
 
       // Invariant check
-      const sum = result.reduce((s, r) => s + r.amountCents, 0);
+      const sum: number = result.reduce((s, r) => s + r.amountCents, 0);
       expect(sum).toBe(order.totalCents - order.platformFeeCents);
     });
 
@@ -205,19 +205,19 @@ describe('settlement split', () => {
         ],
       };
 
-      const vendorEmails = new Map([
+      const vendorEmails: Map<string, string> = new Map([
         ['venue-1', 'venue@example.com'],
         ['partner-1', 'partner1@example.com'],
         ['partner-2', 'partner2@example.com'],
       ]);
-      const result = computeSplit(order, vendorEmails);
+      const result: SplitRow[] = computeSplit(order, vendorEmails);
 
       // Should have venue and 2 partners
       expect(result).toHaveLength(3);
 
-      const partner1 = result.find(r => r.merchantId === 'partner-1');
-      const partner2 = result.find(r => r.merchantId === 'partner-2');
-      const venue = result.find(r => r.merchantId === 'venue-1');
+      const partner1: SplitRow | undefined = result.find(r => r.merchantId === 'partner-1');
+      const partner2: SplitRow | undefined = result.find(r => r.merchantId === 'partner-2');
+      const venue: SplitRow | undefined = result.find(r => r.merchantId === 'venue-1');
 
       // Partner 1: floor(1500 * 0.85) = 1275
       expect(partner1?.amountCents).toBe(1275);
@@ -227,7 +227,7 @@ describe('settlement split', () => {
       expect(venue?.amountCents).toBe(765);
 
       // Invariant check
-      const sum = result.reduce((s, r) => s + r.amountCents, 0);
+      const sum: number = result.reduce((s, r) => s + r.amountCents, 0);
       expect(sum).toBe(order.totalCents - order.platformFeeCents);
     });
 
@@ -250,16 +250,16 @@ describe('settlement split', () => {
         ],
       };
 
-      const vendorEmails = new Map([
+      const vendorEmails: Map<string, string> = new Map([
         ['venue-1', 'venue@example.com'],
         ['partner-1', 'partner@example.com'],
       ]);
-      const result = computeSplit(order, vendorEmails);
+      const result: SplitRow[] = computeSplit(order, vendorEmails);
 
       expect(result).toHaveLength(2);
 
-      const partner = result.find(r => r.merchantId === 'partner-1');
-      const venue = result.find(r => r.merchantId === 'venue-1');
+      const partner: SplitRow | undefined = result.find(r => r.merchantId === 'partner-1');
+      const venue: SplitRow | undefined = result.find(r => r.merchantId === 'venue-1');
 
       // Partner: floor(333 * 0.67) = floor(223.11) = 223
       expect(partner?.amountCents).toBe(223);
@@ -267,7 +267,7 @@ describe('settlement split', () => {
       expect(venue?.amountCents).toBe(136);
 
       // Invariant check
-      const sum = result.reduce((s, r) => s + r.amountCents, 0);
+      const sum: number = result.reduce((s, r) => s + r.amountCents, 0);
       expect(sum).toBe(order.totalCents - order.platformFeeCents);
     });
 
@@ -292,7 +292,7 @@ describe('settlement split', () => {
         ],
       };
 
-      const vendorEmails = new Map([['venue-1', 'venue@example.com']]);
+      const vendorEmails: Map<string, string> = new Map([['venue-1', 'venue@example.com']]);
 
       expect(() => computeSplit(order, vendorEmails)).toThrow(/Cent invariant/);
     });
@@ -317,8 +317,8 @@ describe('settlement split', () => {
       };
 
       // Empty vendor emails map
-      const vendorEmails = new Map<string, string>();
-      const result = computeSplit(order, vendorEmails);
+      const vendorEmails: Map<string, string> = new Map<string, string>();
+      const result: SplitRow[] = computeSplit(order, vendorEmails);
 
       expect(result).toHaveLength(1);
       // Should use default email for missing venue
@@ -345,12 +345,12 @@ describe('settlement split', () => {
         ],
       };
 
-      const vendorEmails = new Map<string, string>();
-      const result = computeSplit(order, vendorEmails);
+      const vendorEmails: Map<string, string> = new Map<string, string>();
+      const result: SplitRow[] = computeSplit(order, vendorEmails);
 
-      const partnerRow = result.find(r => r.merchantId === 'partner-missing');
-      const staffRow = result.find(r => r.staffId === 'staff-missing');
-      const venueRow = result.find(r => r.merchantId === 'venue-1');
+      const partnerRow: SplitRow | undefined = result.find(r => r.merchantId === 'partner-missing');
+      const staffRow: SplitRow | undefined = result.find(r => r.staffId === 'staff-missing');
+      const venueRow: SplitRow | undefined = result.find(r => r.merchantId === 'venue-1');
 
       expect(partnerRow?.receiverEmail).toBe('unknown@example.com');
       expect(staffRow?.receiverEmail).toBe('staff@example.com');
@@ -382,22 +382,298 @@ describe('settlement split', () => {
         ],
       };
 
-      const vendorEmails = new Map([
+      const vendorEmails: Map<string, string> = new Map([
         ['venue-1', 'venue@example.com'],
         ['partner-1', 'partner@example.com'],
       ]);
-      const result = computeSplit(order, vendorEmails);
+      const result: SplitRow[] = computeSplit(order, vendorEmails);
 
       // Should have 2 rows (venue accumulated, partner separate)
       expect(result).toHaveLength(2);
 
-      const venue = result.find(r => r.merchantId === 'venue-1');
+      const venue: SplitRow | undefined = result.find(r => r.merchantId === 'venue-1');
       // Venue should receive: 1000 (own item) + 100 (commission) + 160 (tax) + 100 (tip) = 1360
       expect(venue?.amountCents).toBe(1360);
 
       // Invariant check
-      const sum = result.reduce((s, r) => s + r.amountCents, 0);
+      const sum: number = result.reduce((s, r) => s + r.amountCents, 0);
       expect(sum).toBe(order.totalCents - order.platformFeeCents);
+    });
+
+    it('rejects negative order amounts (subtotal, tax, tip, platformFee, total)', () => {
+      const baseOrder: OrderWithItems = {
+        id: 'order-neg',
+        venueId: 'venue-1',
+        subtotalCents: 1000,
+        taxCents: 80,
+        tipCents: 0,
+        platformFeeCents: 50,
+        totalCents: 1130,
+        items: [
+          {
+            merchantId: 'venue-1',
+            merchantType: 'PRIMARY_VENUE',
+            commissionRate: 0,
+            lineCents: 1000,
+          },
+        ],
+      };
+      const vendorEmails: Map<string, string> = new Map([['venue-1', 'venue@example.com']]);
+
+      expect(() =>
+        computeSplit({ ...baseOrder, subtotalCents: -1000 }, vendorEmails)
+      ).toThrow('Order amounts cannot be negative');
+
+      expect(() =>
+        computeSplit({ ...baseOrder, taxCents: -80 }, vendorEmails)
+      ).toThrow('Order amounts cannot be negative');
+
+      expect(() =>
+        computeSplit({ ...baseOrder, tipCents: -50 }, vendorEmails)
+      ).toThrow('Order amounts cannot be negative');
+
+      expect(() =>
+        computeSplit({ ...baseOrder, platformFeeCents: -10 }, vendorEmails)
+      ).toThrow('Order amounts cannot be negative');
+
+      expect(() =>
+        computeSplit({ ...baseOrder, totalCents: -1130 }, vendorEmails)
+      ).toThrow('Order amounts cannot be negative');
+    });
+
+    it('rejects negative item lineCents', () => {
+      const order: OrderWithItems = {
+        id: 'order-neg-item',
+        venueId: 'venue-1',
+        subtotalCents: 500,
+        taxCents: 40,
+        tipCents: 0,
+        platformFeeCents: 25,
+        totalCents: 565,
+        items: [
+          {
+            merchantId: 'venue-1',
+            merchantType: 'PRIMARY_VENUE',
+            commissionRate: 0,
+            lineCents: 1000,
+          },
+          {
+            merchantId: 'partner-1',
+            merchantType: 'EXTERNAL_PARTNER',
+            commissionRate: 0.1,
+            lineCents: -500,
+          },
+        ],
+      };
+      const vendorEmails: Map<string, string> = new Map([['venue-1', 'venue@example.com']]);
+
+      expect(() => computeSplit(order, vendorEmails)).toThrow(
+        'Item lineCents cannot be negative'
+      );
+    });
+
+    it('rejects negative or >1 commissionRate', () => {
+      const baseOrder: OrderWithItems = {
+        id: 'order-bad-comm',
+        venueId: 'venue-1',
+        subtotalCents: 1000,
+        taxCents: 80,
+        tipCents: 0,
+        platformFeeCents: 50,
+        totalCents: 1130,
+        items: [
+          {
+            merchantId: 'partner-1',
+            merchantType: 'EXTERNAL_PARTNER',
+            commissionRate: -0.1,
+            lineCents: 1000,
+          },
+        ],
+      };
+      const vendorEmails: Map<string, string> = new Map([
+        ['venue-1', 'venue@example.com'],
+        ['partner-1', 'partner@example.com'],
+      ]);
+
+      expect(() => computeSplit(baseOrder, vendorEmails)).toThrow(
+        'Commission rate must be between 0 and 1'
+      );
+
+      expect(() =>
+        computeSplit(
+          {
+            ...baseOrder,
+            items: [
+              {
+                merchantId: 'partner-1',
+                merchantType: 'EXTERNAL_PARTNER',
+                commissionRate: 1.25,
+                lineCents: 1000,
+              },
+            ],
+          },
+          vendorEmails
+        )
+      ).toThrow('Commission rate must be between 0 and 1');
+    });
+
+    it('handles boundary commission rates (0% and 100%)', () => {
+      const order: OrderWithItems = {
+        id: 'order-boundary-comm',
+        venueId: 'venue-1',
+        subtotalCents: 2000,
+        taxCents: 160,
+        tipCents: 0,
+        platformFeeCents: 100,
+        totalCents: 2260,
+        items: [
+          {
+            merchantId: 'partner-zero',
+            merchantType: 'EXTERNAL_PARTNER',
+            commissionRate: 0,
+            lineCents: 1000,
+          },
+          {
+            merchantId: 'partner-full',
+            merchantType: 'EXTERNAL_PARTNER',
+            commissionRate: 1,
+            lineCents: 1000,
+          },
+        ],
+      };
+      const vendorEmails: Map<string, string> = new Map([
+        ['venue-1', 'venue@example.com'],
+        ['partner-zero', 'zero@example.com'],
+        ['partner-full', 'full@example.com'],
+      ]);
+
+      const result: SplitRow[] = computeSplit(order, vendorEmails);
+      const partnerZero: SplitRow | undefined = result.find(r => r.merchantId === 'partner-zero');
+      const partnerFull: SplitRow | undefined = result.find(r => r.merchantId === 'partner-full');
+      const venue: SplitRow | undefined = result.find(r => r.merchantId === 'venue-1');
+
+      expect(partnerZero?.amountCents).toBe(1000);
+      expect(partnerFull?.amountCents).toBe(0);
+      expect(venue?.amountCents).toBe(1160); // 1000 commission + 160 tax
+    });
+
+    it('rejects order when platform stakeholder share would be negative (totalCents < splitSum)', () => {
+      const order: OrderWithItems = {
+        id: 'order-neg-platform-share',
+        venueId: 'venue-1',
+        subtotalCents: 1000,
+        taxCents: 80,
+        tipCents: 200,
+        platformFeeCents: 50,
+        totalCents: 900, // Less than splitSum (1280), making platform retained share -380 cents
+        items: [
+          {
+            merchantId: 'venue-1',
+            merchantType: 'PRIMARY_VENUE',
+            commissionRate: 0,
+            lineCents: 1000,
+          },
+        ],
+      };
+      const vendorEmails: Map<string, string> = new Map([['venue-1', 'venue@example.com']]);
+
+      expect(() => computeSplit(order, vendorEmails)).toThrow(
+        'Stakeholder share cannot be negative for order order-neg-platform-share: platform share is -380 cents'
+      );
+    });
+
+    it('guarantees no stakeholder (venue, partners, staff, or platform) ever receives a negative amount across diverse scenarios', () => {
+      const scenarios: OrderWithItems[] = [
+        // 1. All 4 stakeholders active (venue + 2 partners + staff tip + platform fee)
+        {
+          id: 'scenario-all-stakeholders',
+          venueId: 'venue-1',
+          serverStaffId: 'staff-1',
+          subtotalCents: 2501,
+          taxCents: 200,
+          tipCents: 350,
+          platformFeeCents: 125,
+          totalCents: 3176,
+          items: [
+            {
+              merchantId: 'venue-1',
+              merchantType: 'PRIMARY_VENUE',
+              commissionRate: 0,
+              lineCents: 1000,
+            },
+            {
+              merchantId: 'partner-1',
+              merchantType: 'EXTERNAL_PARTNER',
+              commissionRate: 0.15,
+              lineCents: 1500,
+            },
+            {
+              merchantId: 'partner-2',
+              merchantType: 'EXTERNAL_PARTNER',
+              commissionRate: 0.99, // 99% commission on 1 cent item -> floor(1 * 0.01) = 0 partner, 1 venue
+              lineCents: 1,
+            },
+          ],
+        },
+        // 2. Zero tax, zero tip, zero platform fee, 100% partner commission
+        {
+          id: 'scenario-zero-edges',
+          venueId: 'venue-1',
+          subtotalCents: 500,
+          taxCents: 0,
+          tipCents: 0,
+          platformFeeCents: 0,
+          totalCents: 500,
+          items: [
+            {
+              merchantId: 'partner-1',
+              merchantType: 'EXTERNAL_PARTNER',
+              commissionRate: 1,
+              lineCents: 500,
+            },
+          ],
+        },
+        // 3. Zero commission (0%) partner-only order with no tax/tip (venue gets 0, partner gets 100%)
+        {
+          id: 'scenario-zero-venue-cut',
+          venueId: 'venue-1',
+          subtotalCents: 500,
+          taxCents: 0,
+          tipCents: 0,
+          platformFeeCents: 25,
+          totalCents: 525,
+          items: [
+            {
+              merchantId: 'partner-1',
+              merchantType: 'EXTERNAL_PARTNER',
+              commissionRate: 0,
+              lineCents: 500,
+            },
+          ],
+        },
+      ];
+
+      const vendorEmails: Map<string, string> = new Map([
+        ['venue-1', 'venue@example.com'],
+        ['partner-1', 'partner1@example.com'],
+        ['partner-2', 'partner2@example.com'],
+        ['staff-1', 'staff1@example.com'],
+      ]);
+
+      for (const order of scenarios) {
+        const splitRows: SplitRow[] = computeSplit(order, vendorEmails);
+
+        // Every payout stakeholder (PRIMARY_VENUE, PARTNER_MERCHANT, STAFF_TIP) must be >= 0
+        for (const row of splitRows) {
+          expect(row.amountCents).toBeGreaterThanOrEqual(0);
+        }
+
+        // Retained platform stakeholder share must also be >= 0
+        const splitSum: number = splitRows.reduce((sum, r) => sum + r.amountCents, 0);
+        const platformShareCents: number = order.totalCents - splitSum;
+        expect(platformShareCents).toBeGreaterThanOrEqual(0);
+        expect(platformShareCents).toBe(order.platformFeeCents);
+      }
     });
   });
 });

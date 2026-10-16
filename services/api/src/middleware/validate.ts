@@ -11,12 +11,12 @@ export function validateMiddleware(
   source: 'body' | 'params' | 'query' = 'body'
 ) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const dataToValidate =
+    const dataToValidate: Request['body'] | Request['params'] | Request['query'] =
       source === 'body' ? req.body :
       source === 'params' ? req.params :
       req.query;
 
-    const parseResult = schema.safeParse(dataToValidate);
+    const parseResult: ReturnType<ZodSchema["safeParse"]> = schema.safeParse(dataToValidate);
 
     if (!parseResult.success) {
       res.status(400).json({
@@ -25,11 +25,10 @@ export function validateMiddleware(
         message: 'Invalid request data',
         errors: parseResult.error.errors,
       });
-      return;
+    } else {
+      req.validatedData = parseResult.data;
+      next();
     }
-
-    (req as any).validatedData = parseResult.data;
-    next();
   };
 }
 
@@ -37,7 +36,7 @@ export function validateMiddleware(
  * Typed accessor for data attached by validateMiddleware.
  */
 export function getValidated<T>(req: Request): T {
-  return (req as any).validatedData as T;
+  return req.validatedData as T;
 }
 
 /**
@@ -46,10 +45,10 @@ export function getValidated<T>(req: Request): T {
  */
 export function validateRawBodyMiddleware(schema: ZodSchema, errorCode: string) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    if (!schema.safeParse((req as any).rawBody).success) {
+    if (!schema.safeParse(req.rawBody).success) {
       res.status(200).json({ status: 'error', code: errorCode });
-      return;
+    } else {
+      next();
     }
-    next();
   };
 }

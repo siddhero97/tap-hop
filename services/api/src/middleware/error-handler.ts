@@ -12,7 +12,7 @@ export function errorHandlerMiddleware(
   res: Response,
   _next: NextFunction
 ): void {
-  const requestId = (req as any).requestId;
+  const requestId: string | undefined = req.requestId;
 
   logger.error(
     {

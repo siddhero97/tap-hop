@@ -1,22 +1,15 @@
 import { beforeEach, afterAll } from 'vitest';
-import { prisma } from '@tabhop/database';
-
-const TABLES = [
-  'PayoutBatchItem',
-  'PayoutBatch',
-  'OrderItem',
-  'Order',
-  'WebhookEvent',
-  'Item',
-  'Staff',
-  'Merchant',
-];
+import {
+  disconnectTestDatabase,
+  resetTestDatabase,
+  type TestBatchCountDto,
+} from './helpers/test-db.repository.js';
 
 beforeEach(async () => {
-  const quoted = TABLES.map((t) => `"${t}"`).join(', ');
-  await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${quoted} RESTART IDENTITY CASCADE`);
+  const deletedBatches: TestBatchCountDto[] = await resetTestDatabase();
+  void deletedBatches;
 });
 
 afterAll(async () => {
-  await prisma.$disconnect();
+  await disconnectTestDatabase();
 });

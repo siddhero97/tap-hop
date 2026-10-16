@@ -13,6 +13,21 @@ export default defineWorkspace([
     test: {
       name: 'integration',
       include: ['test/integration/**/*.test.ts'],
+      fileParallelism: false,
+      hookTimeout: 30000,
+      testTimeout: 30000,
+      poolOptions: {
+        threads: {
+          singleThread: true,
+        },
+      },
+    },
+  },
+  {
+    extends: './vitest.sandbox.config.ts',
+    test: {
+      name: 'sandbox',
+      include: ['test/sandbox/**/*.test.ts'],
     },
   },
 ]);

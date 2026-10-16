@@ -1,20 +1,21 @@
 import { Decimal } from '@prisma/client/runtime/library';
 
 export function toCents(value: string | number | Decimal): number {
-  const str = typeof value === 'object' ? value.toString() : String(value);
-  const match = str.match(/^(-?\d+)\.?(\d{0,2})?$/);
+  const str: string = typeof value === 'object' ? value.toString() : String(value);
+  const match: RegExpMatchArray | null = str.match(/^(-?\d+)\.?(\d{0,2})?$/);
   if (!match) throw new Error(`Invalid money value: ${str}`);
-  const dollars = match[1];
-  const cents = (match[2] || '0').padEnd(2, '0');
-  return parseInt(dollars + cents, 10);
+  const dollars: string = match[1];
+  const cents: string = (match[2] || '0').padEnd(2, '0');
+  const parsed: number = parseInt(dollars + cents, 10);
+  return parsed === 0 ? 0 : parsed;
 }
 
 export function fromCents(cents: number): Decimal {
   if (!Number.isInteger(cents)) throw new Error(`cents must be integer, got ${cents}`);
-  const str = Math.abs(cents).toString().padStart(3, '0');
-  const dollars = str.slice(0, -2) || '0';
-  const decimal = str.slice(-2);
-  const sign = cents < 0 ? '-' : '';
+  const str: string = Math.abs(cents).toString().padStart(3, '0');
+  const dollars: string = str.slice(0, -2) || '0';
+  const decimal: string = str.slice(-2);
+  const sign: string = cents < 0 ? '-' : '';
   return new Decimal(`${sign}${dollars}.${decimal}`);
 }
 

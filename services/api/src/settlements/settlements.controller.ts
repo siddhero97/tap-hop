@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { GetSettlementsQuery } from './settlements.validator.js';
+import type { SettlementLedgerRow } from './settlements.service.js';
 import { getValidated } from '../middleware/validate.js';
 import { getServices } from '../lib/app-services.js';
 import { sendServiceError } from '../lib/service-error.js';
@@ -11,7 +12,7 @@ import { logger } from '../lib/logger.js';
 export async function retrySettlement(req: Request, res: Response): Promise<void> {
   try {
     const { settlementService } = getServices(req);
-    const result = await settlementService.retry(req.params.orderId);
+    const result: { payoutBatchId: string; status: string } = await settlementService.retry(req.params.orderId);
     res.status(200).json({
       status: 'success',
       payoutBatch: {
@@ -20,19 +21,18 @@ export async function retrySettlement(req: Request, res: Response): Promise<void
       },
     });
   } catch (error) {
-    if (sendServiceError(res, error)) {
-      return;
+    if (!sendServiceError(res, error)) {
+      logger.error(
+        { error: String(error), orderId: req.params.orderId },
+        'Error retrying settlement'
+      );
+      res.status(400).json({
+        status: 'error',
+        code: 'SETTLEMENT_DISPATCH_FAILED',
+        message: 'Failed to dispatch settlement retry',
+        details: (error as Error).message,
+      });
     }
-    logger.error(
-      { error: String(error), orderId: req.params.orderId },
-      'Error retrying settlement'
-    );
-    res.status(400).json({
-      status: 'error',
-      code: 'SETTLEMENT_DISPATCH_FAILED',
-      message: 'Failed to dispatch settlement retry',
-      details: (error as Error).message,
-    });
   }
 }
 
@@ -42,9 +42,9 @@ export async function retrySettlement(req: Request, res: Response): Promise<void
  */
 export async function getSettlements(req: Request, res: Response): Promise<void> {
   try {
-    const query = getValidated<GetSettlementsQuery>(req);
+    const query: GetSettlementsQuery = getValidated<GetSettlementsQuery>(req);
     const { settlementService } = getServices(req);
-    const { rows, total } = await settlementService.listSettlements(query);
+    const { rows, total }: { rows: SettlementLedgerRow[]; total: number } = await settlementService.listSettlements(query);
 
     res.status(200).json({
       status: 'success',

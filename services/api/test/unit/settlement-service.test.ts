@@ -34,10 +34,15 @@ vi.mock('@tabhop/database', () => ({
 import { SettlementService } from '../../src/settlements/settlements.service';
 import { prisma } from '@tabhop/database';
 
+export interface MockDecimalLike {
+  toString(): string;
+  toFixed(places: number): string;
+}
+
 /**
  * Helper to create a mock Decimal that behaves like Prisma Decimal
  */
-function mockDecimal(value: string): any {
+function mockDecimal(value: string): MockDecimalLike {
   return {
     toString: () => value,
     toFixed: (places: number) => parseFloat(value).toFixed(places),
@@ -74,10 +79,10 @@ describe('SettlementService', () => {
 
   describe('Happy path: order captured, batch created, PayPal success', () => {
     it('creates payout batch and dispatches to PayPal', async () => {
-      const orderId = 'order-1';
-      const batchId = 'batch-1';
+      const orderId: string = 'order-1';
+      const batchId: string = 'batch-1';
 
-      const mockOrder = {
+      const mockOrder: { id: string; venueId: string; serverStaffId: string; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: string; }; serverStaff: { paypalEmail: string; }; items: { item: { merchantId: string; merchant: { paypalEmail: string; commissionRate: MockDecimalLike; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; }[]; payoutBatch: null; } = {
         id: orderId,
         venueId: 'venue-1',
         serverStaffId: 'staff-1',
@@ -118,7 +123,7 @@ describe('SettlementService', () => {
         payoutBatch: null,
       };
 
-      const mockBatch = {
+      const mockBatch: { id: string; orderId: string; status: string; attempts: number; paypalBatchId: null; lastError: null; dispatchedAt: null; } = {
         id: batchId,
         orderId,
         status: 'PROCESSING',
@@ -136,7 +141,7 @@ describe('SettlementService', () => {
         dispatchedAt: new Date(),
       } as any);
 
-      const result = await service.dispatch(orderId);
+      const result: { payoutBatchId: string; status: PayPalBatchStatus } = await service.dispatch(orderId);
 
       expect(result.payoutBatchId).toBe(batchId);
       expect(result.status).toBe(PayPalBatchStatus.PROCESSING);
@@ -163,10 +168,10 @@ describe('SettlementService', () => {
 
   describe('Idempotent: already has batch', () => {
     it('returns existing batch without calling PayPal again', async () => {
-      const orderId = 'order-2';
-      const batchId = 'batch-2';
+      const orderId: string = 'order-2';
+      const batchId: string = 'batch-2';
 
-      const mockOrder = {
+      const mockOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: string; }; serverStaff: null; items: { item: { merchantId: string; merchant: { paypalEmail: string; commissionRate: MockDecimalLike; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; }[]; payoutBatch: { id: string; orderId: string; status: string; attempts: number; paypalBatchId: string; lastError: null; dispatchedAt: Date; }; } = {
         id: orderId,
         venueId: 'venue-1',
         serverStaffId: null,
@@ -205,7 +210,7 @@ describe('SettlementService', () => {
 
       vi.mocked(prisma.order.findUnique).mockResolvedValueOnce(mockOrder as any);
 
-      const result = await service.dispatch(orderId);
+      const result: { payoutBatchId: string; status: PayPalBatchStatus } = await service.dispatch(orderId);
 
       expect(result.payoutBatchId).toBe(batchId);
       expect(vi.mocked(prisma.$transaction)).not.toHaveBeenCalled();
@@ -215,9 +220,9 @@ describe('SettlementService', () => {
 
   describe('Order not captured', () => {
     it('throws when order status is not CAPTURED', async () => {
-      const orderId = 'order-3';
+      const orderId: string = 'order-3';
 
-      const mockOrder = {
+      const mockOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: string; }; serverStaff: null; items: never[]; payoutBatch: null; } = {
         id: orderId,
         venueId: 'venue-1',
         serverStaffId: null,
@@ -245,10 +250,10 @@ describe('SettlementService', () => {
 
   describe('PayPal error', () => {
     it('stores FAILED status and rethrows error', async () => {
-      const orderId = 'order-4';
-      const batchId = 'batch-4';
+      const orderId: string = 'order-4';
+      const batchId: string = 'batch-4';
 
-      const mockOrder = {
+      const mockOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: string; }; serverStaff: null; items: { item: { merchantId: string; merchant: { paypalEmail: string; commissionRate: MockDecimalLike; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; }[]; payoutBatch: null; } = {
         id: orderId,
         venueId: 'venue-1',
         serverStaffId: null,
@@ -277,7 +282,7 @@ describe('SettlementService', () => {
         payoutBatch: null,
       };
 
-      const mockBatch = {
+      const mockBatch: { id: string; orderId: string; status: string; attempts: number; paypalBatchId: null; lastError: null; dispatchedAt: null; } = {
         id: batchId,
         orderId,
         status: 'PROCESSING',
@@ -314,9 +319,9 @@ describe('SettlementService', () => {
 
   describe('Database transaction rollback on error', () => {
     it('rolls back transaction when batch creation fails', async () => {
-      const orderId = 'order-5';
+      const orderId: string = 'order-5';
 
-      const mockOrder = {
+      const mockOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: string; }; serverStaff: null; items: { item: { merchantId: string; merchant: { paypalEmail: string; commissionRate: MockDecimalLike; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; }[]; payoutBatch: null; } = {
         id: orderId,
         venueId: 'venue-1',
         serverStaffId: null,
@@ -358,7 +363,7 @@ describe('SettlementService', () => {
 
   describe('Order not found', () => {
     it('throws when order does not exist', async () => {
-      const orderId = 'order-nonexistent';
+      const orderId: string = 'order-nonexistent';
 
       vi.mocked(prisma.order.findUnique).mockResolvedValueOnce(null);
 
@@ -370,11 +375,11 @@ describe('SettlementService', () => {
 
   describe('Retry with failed batch', () => {
     it('retries and creates new batch when previous was FAILED', async () => {
-      const orderId = 'order-6';
-      const oldBatchId = 'batch-6-old';
-      const newBatchId = 'batch-6-new';
+      const orderId: string = 'order-6';
+      const oldBatchId: string = 'batch-6-old';
+      const newBatchId: string = 'batch-6-new';
 
-      const mockOrder = {
+      const mockOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: string; }; serverStaff: null; items: { item: { merchantId: string; merchant: { paypalEmail: string; commissionRate: MockDecimalLike; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; }[]; payoutBatch: { id: string; orderId: string; status: string; attempts: number; paypalBatchId: null; lastError: string; dispatchedAt: null; }; } = {
         id: orderId,
         venueId: 'venue-1',
         serverStaffId: null,
@@ -411,7 +416,7 @@ describe('SettlementService', () => {
         },
       };
 
-      const mockNewBatch = {
+      const mockNewBatch: { id: string; orderId: string; status: string; attempts: number; paypalBatchId: null; lastError: null; dispatchedAt: null; } = {
         id: newBatchId,
         orderId,
         status: 'PROCESSING',
@@ -429,7 +434,7 @@ describe('SettlementService', () => {
         dispatchedAt: new Date(),
       } as any);
 
-      const result = await service.dispatch(orderId);
+      const result: { payoutBatchId: string; status: PayPalBatchStatus } = await service.dispatch(orderId);
 
       expect(result.payoutBatchId).toBe(newBatchId);
       expect(vi.mocked(prisma.$transaction)).toHaveBeenCalled();
@@ -438,10 +443,10 @@ describe('SettlementService', () => {
 
   describe('Multiple recipients with different roles', () => {
     it('creates batch items for venue, partner, and staff', async () => {
-      const orderId = 'order-7';
-      const batchId = 'batch-7';
+      const orderId: string = 'order-7';
+      const batchId: string = 'batch-7';
 
-      const mockOrder = {
+      const mockOrder: { id: string; venueId: string; serverStaffId: string; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: string; }; serverStaff: { paypalEmail: string; }; items: ({ item: { merchantId: string; merchant: { paypalEmail: string; commissionRate: { toString: () => string; }; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; } | { item: { merchantId: string; merchant: { paypalEmail: string; commissionRate: MockDecimalLike; merchantType: string; }; }; unitPrice: MockDecimalLike; quantity: number; })[]; payoutBatch: null; } = {
         id: orderId,
         venueId: 'venue-1',
         serverStaffId: 'staff-1',
@@ -482,7 +487,7 @@ describe('SettlementService', () => {
         payoutBatch: null,
       };
 
-      const mockBatch = {
+      const mockBatch: { id: string; orderId: string; status: string; attempts: number; paypalBatchId: null; lastError: null; dispatchedAt: null; } = {
         id: batchId,
         orderId,
         status: 'PROCESSING',
@@ -500,7 +505,7 @@ describe('SettlementService', () => {
         dispatchedAt: new Date(),
       } as any);
 
-      const result = await service.dispatch(orderId);
+      const result: { payoutBatchId: string; status: PayPalBatchStatus } = await service.dispatch(orderId);
 
       expect(result.payoutBatchId).toBe(batchId);
       expect(vi.mocked(prisma.$transaction)).toHaveBeenCalled();
@@ -509,7 +514,7 @@ describe('SettlementService', () => {
 
   describe('Status mapping branches', () => {
     it('maps existing QUEUED and COMPLETED payout batches on idempotent dispatch', async () => {
-      const baseOrder = {
+      const baseOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: string; }; serverStaff: null; items: never[]; } = {
         id: 'order-status-map',
         venueId: 'venue-1',
         serverStaffId: null,
@@ -528,36 +533,54 @@ describe('SettlementService', () => {
         ...baseOrder,
         payoutBatch: { id: 'b-queued', status: 'QUEUED', attempts: 1 },
       } as any);
-      const resQueued = await service.dispatch('order-status-map');
+      const resQueued: { payoutBatchId: string; status: PayPalBatchStatus } = await service.dispatch('order-status-map');
       expect(resQueued.status).toBe(PayPalBatchStatus.PENDING);
 
       vi.mocked(prisma.order.findUnique).mockResolvedValueOnce({
         ...baseOrder,
         payoutBatch: { id: 'b-completed', status: 'COMPLETED', attempts: 1 },
       } as any);
-      const resCompleted = await service.dispatch('order-status-map');
+      const resCompleted: { payoutBatchId: string; status: PayPalBatchStatus } = await service.dispatch('order-status-map');
       expect(resCompleted.status).toBe(PayPalBatchStatus.SUCCESS);
     });
 
     it('maps PayPalBatchStatus values and throws on unknown statuses', () => {
-      const s = service as any;
-      expect(s.mapPayoutStatusToPayPalBatchStatus('FAILED')).toBe(PayPalBatchStatus.FAILED);
-      expect(() => s.mapPayoutStatusToPayPalBatchStatus('UNKNOWN')).toThrow(
+      const internalService: {
+        mapPayoutStatusToPayPalBatchStatus(status: string): PayPalBatchStatus;
+        mapPayPalBatchStatusToPayoutStatus(status: string): string;
+      } = service as unknown as {
+        mapPayoutStatusToPayPalBatchStatus(status: string): PayPalBatchStatus;
+        mapPayPalBatchStatusToPayoutStatus(status: string): string;
+      };
+      expect(internalService.mapPayoutStatusToPayPalBatchStatus('FAILED')).toBe(
+        PayPalBatchStatus.FAILED
+      );
+      expect(() => internalService.mapPayoutStatusToPayPalBatchStatus('UNKNOWN')).toThrow(
         'Unknown PayoutStatus: UNKNOWN'
       );
 
-      expect(s.mapPayPalBatchStatusToPayoutStatus(PayPalBatchStatus.PENDING)).toBe('QUEUED');
-      expect(s.mapPayPalBatchStatusToPayoutStatus(PayPalBatchStatus.PROCESSING)).toBe('PROCESSING');
-      expect(s.mapPayPalBatchStatusToPayoutStatus(PayPalBatchStatus.SUCCESS)).toBe('COMPLETED');
-      expect(s.mapPayPalBatchStatusToPayoutStatus(PayPalBatchStatus.FAILED)).toBe('FAILED');
-      expect(s.mapPayPalBatchStatusToPayoutStatus(PayPalBatchStatus.DENIED)).toBe('FAILED');
-      expect(() => s.mapPayPalBatchStatusToPayoutStatus('UNKNOWN')).toThrow(
+      expect(
+        internalService.mapPayPalBatchStatusToPayoutStatus(PayPalBatchStatus.PENDING)
+      ).toBe('QUEUED');
+      expect(
+        internalService.mapPayPalBatchStatusToPayoutStatus(PayPalBatchStatus.PROCESSING)
+      ).toBe('PROCESSING');
+      expect(
+        internalService.mapPayPalBatchStatusToPayoutStatus(PayPalBatchStatus.SUCCESS)
+      ).toBe('COMPLETED');
+      expect(
+        internalService.mapPayPalBatchStatusToPayoutStatus(PayPalBatchStatus.FAILED)
+      ).toBe('FAILED');
+      expect(
+        internalService.mapPayPalBatchStatusToPayoutStatus(PayPalBatchStatus.DENIED)
+      ).toBe('FAILED');
+      expect(() => internalService.mapPayPalBatchStatusToPayoutStatus('UNKNOWN')).toThrow(
         'Unknown PayPalBatchStatus: UNKNOWN'
       );
     });
 
     it('handles $transaction errors with and without constraint/transaction keywords', async () => {
-      const baseOrder = {
+      const baseOrder: { id: string; venueId: string; serverStaffId: null; status: OrderStatus; subtotalAmount: MockDecimalLike; taxAmount: MockDecimalLike; tipAmount: MockDecimalLike; platformFeeAmount: MockDecimalLike; totalAmount: MockDecimalLike; venue: { paypalEmail: string; }; serverStaff: null; items: { quantity: number; unitPrice: MockDecimalLike; item: { merchantId: string; merchant: { id: string; merchantType: string; commissionRate: MockDecimalLike; paypalEmail: string; }; }; }[]; payoutBatch: null; } = {
         id: 'order-tx-err',
         venueId: 'venue-1',
         serverStaffId: null,

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { processWebhookEvent } from './webhooks.service.js';
+import { processWebhookEvent, type WebhookProcessResponse } from './webhooks.service.js';
 import { getServices } from '../lib/app-services.js';
 import { logger } from '../lib/logger.js';
 
@@ -10,11 +10,11 @@ import { logger } from '../lib/logger.js';
 export async function handlePayPalWebhook(req: Request, res: Response): Promise<void> {
   try {
     const { gateway: paypalGateway, webhookService: service } = getServices(req);
-    const rawBody = (req as any).rawBody;
-    const headers = req.headers as Record<string, string>;
+    const rawBody: string = req.rawBody || JSON.stringify(req.body);
+    const headers: Record<string, string> = req.headers as Record<string, string>;
 
     // Process webhook event
-    const response = await processWebhookEvent(service, headers, rawBody, paypalGateway);
+    const response: WebhookProcessResponse = await processWebhookEvent(service, headers, rawBody, paypalGateway);
     res.status(response.status).json(response.body);
   } catch (error) {
     logger.error(

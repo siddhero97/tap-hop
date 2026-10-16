@@ -10,6 +10,7 @@
     "db:seed": "pnpm -F database seed",
     "test": "pnpm -r test",
     "test:watch": "pnpm -r test:watch",
+    "test:sandbox": "pnpm --filter @tabhop/api test:sandbox",
     "coverage": "pnpm -F api coverage",
     "e2e": "docker-compose up -d && pnpm -F api test:e2e && docker-compose down",
     "build": "pnpm -r build",

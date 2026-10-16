@@ -33,14 +33,27 @@ enum RecipientType {
   PLATFORM_FEE
 }
 
+enum UserRole {
+  PATRON
+  STAFF
+  MERCHANT_ADMIN
+  PLATFORM_SUPPORT
+  PLATFORM_FINANCE
+  PLATFORM_ADMIN
+}
+
 model Merchant {
   id              String        @id @default(uuid())
   businessName    String
   merchantType    MerchantType
   paypalEmail     String
   commissionRate  Decimal       @default(0.15) @db.Decimal(5, 4)
+  latitude        Float?
+  longitude       Float?
+  deliveryRadiusM Int           @default(500)
   items           Item[]
   staff           Staff[]
+  users           User[]
   ordersAsVenue   Order[]       @relation("OrderVenue")
   payoutItems     PayoutBatchItem[]
   createdAt       DateTime      @default(now())
@@ -54,9 +67,45 @@ model Staff {
   displayName String
   paypalEmail String
   isActive    Boolean  @default(true)
+  user        User?
   orders      Order[]
   payoutItems PayoutBatchItem[]
   createdAt   DateTime @default(now())
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  displayName  String
+  role         UserRole  @default(PATRON)
+  isActive     Boolean   @default(true)
+  merchantId   String?
+  merchant     Merchant? @relation(fields: [merchantId], references: [id])
+  staffId      String?   @unique
+  staff        Staff?    @relation(fields: [staffId], references: [id])
+  orders       Order[]
+  sessions     Session[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Session {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model PlatformSettings {
+  id              String   @id @default("default")
+  platformFeeBps  Int      @default(500)
+  taxRateBps      Int      @default(800)
+  updatedByUserId String?
+  updatedAt       DateTime @updatedAt
 }
 
 model Item {
@@ -80,6 +129,8 @@ model Order {
   venue             Merchant     @relation("OrderVenue", fields: [venueId], references: [id])
   serverStaffId     String?
   serverStaff       Staff?       @relation(fields: [serverStaffId], references: [id])
+  patronUserId      String?
+  patronUser        User?        @relation(fields: [patronUserId], references: [id])
   paypalOrderId     String?      @unique
   paypalCaptureId   String?      @unique
   subtotalAmount    Decimal      @db.Decimal(10, 2)
